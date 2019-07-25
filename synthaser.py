@@ -88,20 +88,17 @@ def parse_results_file(results):
             'A': ['A_NRPS', 'AMP-binding']
             }
 
-    queries = defaultdict(list)
-
     Hit = namedtuple('Hit', ['type', 'domain', 'start', 'end'])
-
+    queries = defaultdict(list)
     for row in results:
+        row = row.decode()
         if not row.startswith('Q#'):
             continue
         else:
             fields = row.split('\t')
 
         # Query protein ID stored as Q#1 - >proteinID
-        query = fields[0].split('>')[1]
-        name = fields[8]
-
+        query, name = fields[0].split('>')[1], fields[8]
         for domain_type, domain_names in domains.items():
             if name not in domain_names:
                 continue
@@ -136,13 +133,10 @@ def parse_fasta(fasta):
     sequences = {}
     for line in fasta:
         line = line.strip()
-
         if line.startswith('>'):
-            # Found header line
             header = line[1:]
             sequences[header] = ''
         else:
-            # Otherwise must be sequence
             sequences[header] += line
     return sequences
 
@@ -288,8 +282,71 @@ def wrap_fasta(sequence, limit=80):
                      i in range(0, len(sequence), limit))
 
 
+def classify_synthases(synthase_type, synthases):
+    """ Sort synthases into specific subtypes based on domain composition.
+    """
+    if synthase_type == 'pks':
+        classified = {'HR-PKS': [], 'NR-PKS': [], 'PR-PKS': [], 'Other': []}
+        required = {
+            'HR-PKS': {'ER', 'KR', 'DH'},
+            'PR-PKS': {'KR', 'DH'},
+            'NR-PKS': {'SAT', 'PT'},
+            'Other': set()
+        }
+        for query, domains in synthases.items():
+            combo = (query, domains)
+            types = set(d.type for d in domains)
+            for pks in ('HR-PKS', 'PR-PKS', 'NR-PKS', 'Other'):
+                if required[pks].issubset(types):
+                    classified[pks].append(combo)
+                    continue
+
+    elif synthase_type == 'nrps':
+        classified = {'NRPS': [], 'NRPS-like': [], 'Other': []}
+        required = {
+            'NRPS': {'A', 'T', 'C'},
+            'NRPS-like': {'A'},
+            'Other': set()
+        }
+        for query, domains in synthases.items():
+            # Replace ACP with T, TR with R as is convention
+            for index, domain in enumerate(domains):
+                if domain.type == 'ACP':
+                    domains[index] = domain._replace(type='T')
+                elif domain.type == 'TR':
+                    domains[index] = domain._replace(type='R')
+
+            combo = (query, domains)
+            types = set(d.type for d in domains)
+            for nrps in ('NRPS', 'NRPS-like'):
+                if required[nrps].issubset(types):
+                    classified[nrps].append(combo)
+                    continue
+
+    elif synthase_type == 'hybrid':
+        classified = {'PKS-NRPS': []}
+        for query, domains in synthases.items():
+            condensation = False
+            for index, domain in enumerate(domains):
+                # Condensation domain marks the start of the NRPS module
+                if not condensation:
+                    if domain.type == 'C':
+                        condensation = True
+                    else:
+                        continue
+                # Replace ACP with T, TR with R, as above
+                if domain.type == 'ACP':
+                    domains[index] = domain._replace(type='T')
+                elif domain.type == 'TR':
+                    domains[index] = domain._replace(type='R')
+            combo = (query, domains)
+            classified['PKS-NRPS'].append(combo)
+
+    return classified
+
+
 @click.command()
-@click.argument('synthase',
+@click.argument('synthase_type',
                 type=click.Choice(['pks', 'nrps', 'hybrid']))
 @click.argument('results', type=click.File('rb'))
 @click.option('-f', '--fasta',
@@ -303,7 +360,7 @@ def wrap_fasta(sequence, limit=80):
               default=False)
 @click.option('-o', '--output',
               help='Base name for output files')
-def synthaser(synthase, results, fasta, visualise, extract, output):
+def synthaser(synthase_type, results, fasta, visualise, extract, output):
     """ Parse NCBI CD-Search results file to find domain architectures
         of secondary metabolite synthases.
     """
@@ -314,74 +371,18 @@ def synthaser(synthase, results, fasta, visualise, extract, output):
     for query, domains in queries.items():
         queries[query] = find_architecture(domains)
 
-    if synthase == 'pks':
-        synthases = {'HR-PKS': [], 'NR-PKS': [], 'PR-PKS': [], 'Other': []}
-
-        # Required domains for classifying PKSs
-        hr_pks = {'ER', 'KR', 'DH'}
-        pr_pks = {'KR', 'DH'}
-        nr_pks = {'SAT', 'PT'}
-
-        for query, domains in queries.items():
-            combo = (query, domains)
-            types = set(d.type for d in domains)
-            if hr_pks.issubset(types):
-                synthases['HR-PKS'].append(combo)
-            elif pr_pks.issubset(types):
-                synthases['PR-PKS'].append(combo)
-            elif nr_pks.issubset(types):
-                synthases['NR-PKS'].append(combo)
-            else:
-                synthases['Other'].append(combo)
-
-    elif synthase == 'nrps':
-        synthases = {'NRPS': [], 'NRPS-like': [], 'Other': []}
-
-        # Required domains; a full NRPS should have at least one A-T-C module
-        nrps, like = {'A', 'T', 'C'}, {'A'}
-        for query, domains in queries.items():
-
-            # Replace ACP with T, TR with R as is convention
-            for index, domain in enumerate(domains):
-                if domain.type == 'ACP':
-                    domains[index] = domain._replace(type='T')
-                elif domain.type == 'TR':
-                    domains[index] = domain._replace(type='R')
-
-            combo = (query, domains)
-            types = set(d.type for d in domains)
-            if nrps.issubset(types):
-                synthases['NRPS'].append(combo)
-            elif like.issubset(types):
-                synthases['NRPS-like'].append(combo)
-            else:
-                synthases['Other'].append(combo)
-
-    elif synthase == 'hybrid':
-        synthases = {'PKS-NRPS': []}
-        for query, domains in queries.items():
-            condensation = False
-            for index, domain in enumerate(domains):
-                # Condensation domain marks the start of the NRPS module
-                if not condensation:
-                    if domain.type == 'C':
-                        condensation = True
-                    else:
-                        continue
-                # Replace ACP with T, TR with R, as above
-                if domain.type == 'ACP':
-                    domains[index] = domain._replace(type='T')
-
-                elif domain.type == 'TR':
-                    domains[index] = domain._replace(type='R')
-            combo = (query, domains)
-            synthases['PKS-NRPS'].append(combo)
+    # Classify synthases based on domain composition
+    classified = classify_synthases(synthase_type, queries)
 
     # Print out domain architectures by synthase type
-    for synthase_type in synthases:
+    for i, synthase_type in enumerate(classified):
         print(synthase_type)
-        for synthase, domains in synthases[synthase_type]:
+        print('-' * len(synthase_type))
+        for synthase, domains in classified[synthase_type]:
             print(synthase, ' ', '-'.join(x.type for x in domains))
+        if i == 3:
+            break
+        print('')
 
     if fasta:
         # Parse FASTA file, build dictionary mapping sequences
@@ -390,7 +391,7 @@ def synthaser(synthase, results, fasta, visualise, extract, output):
 
     if visualise:
         # Generate text of an SVG figure
-        image = generate_SVG(synthases, sequences)
+        image = generate_SVG(classified, sequences)
 
         # Write to file
         with open(f'{output}.svg', 'w') as output:
@@ -398,8 +399,8 @@ def synthaser(synthase, results, fasta, visualise, extract, output):
 
     if extract:
         with open(f'{output}_domains.faa', 'w') as out:
-            for synthase_type in synthases:
-                for synthase, domains in synthases[synthase_type]:
+            for synthase_type in classified:
+                for synthase, domains in classified[synthase_type]:
                     counter = Counter()
                     for domain in domains:
                         # Add to counter, then use the current count
