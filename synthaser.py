@@ -106,10 +106,8 @@ def parse_results_file(results):
             if name not in domain_names:
                 continue
             else:
-                hit = Hit(type=domain_type,
-                          domain=name,
-                          start=int(fields[3]),
-                          end=int(fields[4]))
+                start, end = int(fields[3]), int(fields[4])
+                hit = Hit(domain_type, name, start, end)
                 queries[query].append(hit)
                 break
     return queries
@@ -310,18 +308,14 @@ def synthaser(synthase, results, fasta, visualise, extract, output):
         of secondary metabolite synthases.
     """
     # Parse CD search results file for domain hits
-    with open(args.results) as handle:
-        queries = parse_results_file(handle)
+    queries = parse_results_file(results)
 
     # Filter out overlaps, find domain architecture
     for query, domains in queries.items():
         queries[query] = find_architecture(domains)
 
-    if args.type == 'pks':
-        synthases = {'HR-PKS': [],
-                     'NR-PKS': [],
-                     'PR-PKS': [],
-                     'Other': []}
+    if synthase == 'pks':
+        synthases = {'HR-PKS': [], 'NR-PKS': [], 'PR-PKS': [], 'Other': []}
 
         # Required domains for classifying PKSs
         hr_pks = {'ER', 'KR', 'DH'}
@@ -329,76 +323,57 @@ def synthaser(synthase, results, fasta, visualise, extract, output):
         nr_pks = {'SAT', 'PT'}
 
         for query, domains in queries.items():
-
             combo = (query, domains)
             types = set(d.type for d in domains)
-
             if hr_pks.issubset(types):
                 synthases['HR-PKS'].append(combo)
-
             elif pr_pks.issubset(types):
                 synthases['PR-PKS'].append(combo)
-
             elif nr_pks.issubset(types):
                 synthases['NR-PKS'].append(combo)
             else:
                 synthases['Other'].append(combo)
 
-    elif args.type == 'nrps':
-
-        synthases = {'NRPS': [],
-                     'NRPS-like': [],
-                     'Other': []}
+    elif synthase == 'nrps':
+        synthases = {'NRPS': [], 'NRPS-like': [], 'Other': []}
 
         # Required domains; a full NRPS should have at least one A-T-C module
-        nrps = {'A', 'T', 'C'}
-        like = {'A'}
-
+        nrps, like = {'A', 'T', 'C'}, {'A'}
         for query, domains in queries.items():
 
             # Replace ACP with T, TR with R as is convention
             for index, domain in enumerate(domains):
-
                 if domain.type == 'ACP':
                     domains[index] = domain._replace(type='T')
-
                 elif domain.type == 'TR':
                     domains[index] = domain._replace(type='R')
 
             combo = (query, domains)
             types = set(d.type for d in domains)
-
             if nrps.issubset(types):
                 synthases['NRPS'].append(combo)
-
             elif like.issubset(types):
                 synthases['NRPS-like'].append(combo)
             else:
                 synthases['Other'].append(combo)
 
-    elif args.type == 'hybrid':
-
+    elif synthase == 'hybrid':
         synthases = {'PKS-NRPS': []}
-
         for query, domains in queries.items():
-
             condensation = False
             for index, domain in enumerate(domains):
-
                 # Condensation domain marks the start of the NRPS module
                 if not condensation:
                     if domain.type == 'C':
                         condensation = True
                     else:
                         continue
-
                 # Replace ACP with T, TR with R, as above
                 if domain.type == 'ACP':
                     domains[index] = domain._replace(type='T')
 
                 elif domain.type == 'TR':
                     domains[index] = domain._replace(type='R')
-
             combo = (query, domains)
             synthases['PKS-NRPS'].append(combo)
 
@@ -408,28 +383,25 @@ def synthaser(synthase, results, fasta, visualise, extract, output):
         for synthase, domains in synthases[synthase_type]:
             print(synthase, ' ', '-'.join(x.type for x in domains))
 
-    if args.fasta:
+    if fasta:
         # Parse FASTA file, build dictionary mapping sequences
         # to corresponding protein IDs
-        with open(args.fasta, 'r') as fasta:
-            sequences = parse_fasta(fasta)
+        sequences = parse_fasta(fasta)
 
-    if args.visual:
+    if visualise:
         # Generate text of an SVG figure
         image = generate_SVG(synthases, sequences)
 
         # Write to file
-        with open(f'{args.output}.svg', 'w') as output:
+        with open(f'{output}.svg', 'w') as output:
             output.write(image)
 
-    if args.extract:
-        with open(f'{args.output}_domains.faa', 'w') as out:
+    if extract:
+        with open(f'{output}_domains.faa', 'w') as out:
             for synthase_type in synthases:
                 for synthase, domains in synthases[synthase_type]:
-
                     counter = Counter()
                     for domain in domains:
-
                         # Add to counter, then use the current count
                         # to dynamically form a numbered header
                         counter.update(domain.type)
@@ -449,9 +421,3 @@ def synthaser(synthase, results, fasta, visualise, extract, output):
 
 if __name__ == '__main__':
     synthaser()
-#     if (args.extract or args.visual) and (not args.fasta or
-#                                           not args.output):
-#         raise ValueError('FASTA file (--fasta) and output name (--output)'
-#                          ' must be provided if --extract or --visual is used.')
-
-#     main(args)
