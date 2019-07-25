@@ -132,7 +132,7 @@ def parse_fasta(fasta):
     """
     sequences = {}
     for line in fasta:
-        line = line.strip()
+        line = line.decode().strip()
         if line.startswith('>'):
             header = line[1:]
             sequences[header] = ''
@@ -263,7 +263,7 @@ def generate_SVG(synthases, sequences, spacing=40, width=600):
 
         # Since we use this for sizing the SVG canvas, check
         # if it's the final block
-        if type_index != len(polygons) - 1:
+        if type_index != len(polygons):
             block_offset += poly_offset + 2 * spacing
 
         image += '\n</g>'
@@ -299,7 +299,7 @@ def classify_synthases(synthase_type, synthases):
             for pks in ('HR-PKS', 'PR-PKS', 'NR-PKS', 'Other'):
                 if required[pks].issubset(types):
                     classified[pks].append(combo)
-                    continue
+                    break
 
     elif synthase_type == 'nrps':
         classified = {'NRPS': [], 'NRPS-like': [], 'Other': []}
@@ -321,7 +321,7 @@ def classify_synthases(synthase_type, synthases):
             for nrps in ('NRPS', 'NRPS-like'):
                 if required[nrps].issubset(types):
                     classified[nrps].append(combo)
-                    continue
+                    break
 
     elif synthase_type == 'hybrid':
         classified = {'PKS-NRPS': []}
@@ -354,10 +354,10 @@ def classify_synthases(synthase_type, synthases):
               type=click.File('rb'))
 @click.option('-v', '--visualise',
               help='Generate .svg visualisation',
-              default=False)
+              is_flag=True, default=False)
 @click.option('-e', '--extract',
               help='Extract domain regions from each synthase',
-              default=False)
+              is_flag=True, default=False)
 @click.option('-o', '--output',
               help='Base name for output files')
 def synthaser(synthase_type, results, fasta, visualise, extract, output):
