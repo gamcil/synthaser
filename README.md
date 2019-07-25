@@ -82,7 +82,7 @@ file with `--fasta` and specify a base name for output files with `--output`.
 
 Generates:
 
-![cichorine PKS CD-search result](images/cichorine_PKS_cdsearch.png)
+![cichorine PKS CD-search result](images/cichorine_PKS_synthaser.png)
 
 ## Bigger example
 Obviously, the main utility for `synthaser` comes when you want to analyse many
