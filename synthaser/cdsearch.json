@@ -1,0 +1,12 @@
+{
+  "settings": {
+    "db": "cdd",
+    "smode": "auto",
+    "useid1": "true",
+    "compbasedadj": "0",
+    "filter": "false",
+    "evalue": "0.01",
+    "maxhit": "500"
+  },
+  "output_folder": ""
+}
