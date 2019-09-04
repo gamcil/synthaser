@@ -25,9 +25,7 @@ import requests
 logging.basicConfig(level=logging.INFO)
 log = logging.getLogger(__name__)
 
-
-# TODO:
-#   1. Use api_key parameter in entrez requests ?
+# TODO: remove output_folder/file.. just allow writing to open file handles
 
 
 class CDSearch:
@@ -48,7 +46,7 @@ class CDSearch:
         config_file = Path(config_file) if config_file else self.base_cfg
 
         if not config_file.exists():
-            raise IOError(f"No file exists at {config_file}")
+            raise FileNotFoundError(f"No file exists at {config_file}")
 
         with config_file.open() as cfg:
             self.configure(json.load(cfg))
@@ -110,12 +108,11 @@ class CDSearch:
         cdsid : str
             Job ID of the search. Used for checking status and retrieving results later.
         """
-
         if query_file and not query_ids:
             query_path = Path(query_file)
 
             if not query_path.exists():
-                raise IOError(f"No file exists at {query_file}")
+                raise FileNotFoundError(f"No file exists at {query_file}")
 
             with query_path.open() as query_handle:
                 response = requests.post(
@@ -125,6 +122,9 @@ class CDSearch:
             if not isinstance(query_ids, (list, tuple)):
                 raise ValueError("Query IDs must be given in a list or tuple")
 
+            if not all(isinstance(x, (int, str)) for x in query_ids):
+                raise ValueError("Expected a list/tuple of str")
+
             data = self.config.copy()
             data["queries"] = "\n".join(query_ids)  # line feed -> %0A
             response = requests.post(self.base_url, params=data)
@@ -133,8 +133,8 @@ class CDSearch:
 
         try:
             return re.search(r"#cdsid\t(.+?)\n", response.text).group(1)
-        except AttributeError:
-            log.exception("Search failed; no job ID returned")
+        except AttributeError as exc:
+            raise AttributeError("Search failed; no job ID returned") from exc
 
     def check_status(self, cdsid):
         """Check the status of a running CD-search job.
@@ -171,16 +171,7 @@ class CDSearch:
         }
         raise ValueError(f"Request failed; NCBI returned code {code} ({errors[code]})")
 
-    def retrieve_results(
-        self,
-        cdsid,
-        output_file=None,
-        output_folder=None,
-        output_file_handle=None,
-        force=False,
-        check_interval=10,
-        max_retries=20,
-    ):
+    def retrieve_results(self, cdsid, output=None, check_interval=10, max_retries=20):
         """Retrieve the results of a CD-search job.
 
         Parameters
@@ -233,32 +224,17 @@ class CDSearch:
         if not response:
             raise ValueError("No results were returned")
 
-        if output_file_handle:
+        if output:
             log.info("Writing results to supplied file handle")
-            output_file_handle.write(response.content)
-        else:
-            output_file = output_file if output_file else f"{cdsid}.tsv"
-            output_folder = Path(output_folder) if output_folder else self.output_folder
+            output.write(response.text)
 
-            if not output_folder.is_dir():
-                raise OSError("Specified output folder is not a directory")
-
-            output_path = output_folder / output_file
-
-            if output_path.exists() and not force:
-                raise OSError("Specified output file already exists and force==False")
-
-            log.info("Writing results to %s", output_path)
-            with output_path.open("wb") as out:
-                out.write(response.content)
+        return response
 
     def run(
         self,
         query_file=None,
         query_ids=None,
-        output_file=None,
-        output_folder=None,
-        output_file_handle=None,
+        output=None,
         force=False,
         check_interval=5,
         max_retries=10,
@@ -272,12 +248,11 @@ class CDSearch:
         cdsid = self.new_search(query_file=query_file, query_ids=query_ids)
 
         log.info("Retrieving results")
+        log.debug(cdsid)
         self.retrieve_results(
             cdsid,
             check_interval=check_interval,
             max_retries=max_retries,
-            output_file=output_file,
-            output_folder=output_folder,
-            output_file_handle=output_file_handle,
+            output=output,
             force=force,
         )
