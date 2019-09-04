@@ -10,7 +10,7 @@ from pathlib import Path
 
 import pytest
 
-import synthaser
+import synthaser.base as base
 
 
 TEST_DIR = Path(__file__).resolve().parent
@@ -26,7 +26,7 @@ def test_parse_fasta(tmp_path):
     fasta_file.write_text(fasta_str)
 
     with fasta_file.open() as fasta_handle:
-        fasta = synthaser.parse_fasta(fasta_handle)
+        fasta = base.parse_fasta(fasta_handle)
 
     assert fasta == {
         "TEST1": "ACGTACGTACGTACGTACGTGCACGTGCACGTGCA",
@@ -36,7 +36,7 @@ def test_parse_fasta(tmp_path):
 
 def test_wrap_fasta():
     sequence = "GAGAACGTCGACGTCGATCGATCTAGCTGACAGCTAGCTA"
-    wrapped = synthaser.wrap_fasta(sequence, limit=10)
+    wrapped = base.wrap_fasta(sequence, limit=10)
     assert wrapped == "GAGAACGTCG\nACGTCGATCG\nATCTAGCTGA\nCAGCTAGCTA"
 
 
@@ -44,15 +44,15 @@ def test_wrap_fasta():
     "types,result", [(["KS", "A"], "Hybrid"), (["KS"], "PKS"), (["A"], "NRPS")]
 )
 def test_assign_type(types, result):
-    synthase = synthaser.Synthase()
+    synthase = base.Synthase()
 
     with pytest.raises(ValueError):
-        synthaser.assign_type(synthase)
+        base.assign_type(synthase)
 
     for typ in types:
-        synthase.domains.append(synthaser.Domain(type=typ))
+        synthase.domains.append(base.Domain(type=typ))
 
-    assert synthaser.assign_type(synthase) == result
+    assert base.assign_type(synthase) == result
 
 
 @pytest.mark.parametrize(
@@ -72,12 +72,12 @@ def test_assign_type(types, result):
     ],
 )
 def test_assign_subtype(stype, dtypes, result):
-    synthase = synthaser.Synthase(type=stype)
+    synthase = base.Synthase(type=stype)
 
     for t in dtypes:
-        synthase.domains.append(synthaser.Domain(type=t))
+        synthase.domains.append(base.Domain(type=t))
 
-    assert synthaser.assign_subtype(synthase) == result
+    assert base.assign_subtype(synthase) == result
 
 
 @pytest.mark.parametrize(
@@ -85,28 +85,28 @@ def test_assign_subtype(stype, dtypes, result):
     [((0, 100), (10, 110), 0.9, True), ((0, 100), (80, 180), 0.9, False)],
 )
 def test_hits_overlap(a, b, threshold, result):
-    dom_a = synthaser.Domain(start=a[0], end=a[1])
-    dom_b = synthaser.Domain(start=b[0], end=b[1])
-    assert synthaser.hits_overlap(dom_a, dom_b, threshold=threshold) == result
+    dom_a = base.Domain(start=a[0], end=a[1])
+    dom_b = base.Domain(start=b[0], end=b[1])
+    assert base.hits_overlap(dom_a, dom_b, threshold=threshold) == result
 
 
 def test_group_overlapping_hits():
     domains = [
-        synthaser.Domain(start=0, end=100),
-        synthaser.Domain(start=10, end=110),
-        synthaser.Domain(start=90, end=200),
-        synthaser.Domain(start=180, end=290),
-        synthaser.Domain(start=180, end=300),
+        base.Domain(start=0, end=100),
+        base.Domain(start=10, end=110),
+        base.Domain(start=90, end=200),
+        base.Domain(start=180, end=290),
+        base.Domain(start=180, end=300),
     ]
 
-    groups = [group for group in synthaser.group_overlapping_hits(domains)]
+    groups = [group for group in base.group_overlapping_hits(domains)]
 
     assert groups == [domains[0:2], [domains[2]], domains[3:]]
 
 
 def test_Domain_from_cdsearch_row():
     row = "\t\t\t0\t100\t\t\t\tPKS_KS\t\t"
-    domain = synthaser.Domain.from_cdsearch_row(row)
+    domain = base.Domain.from_cdsearch_row(row)
     assert domain.start == 0
     assert domain.end == 100
     assert domain.type == "KS"
@@ -115,12 +115,12 @@ def test_Domain_from_cdsearch_row():
 
 def test_Domain_slice():
     sequence = "ACGCAGCAGTGCAGTGAGACGATGA"
-    domain = synthaser.Domain(start=10, end=20)
+    domain = base.Domain(start=10, end=20)
     assert domain.slice(sequence) == "TGCAGTGAGAC"
 
 
 def test_Domain_serialisation(tmp_path):
-    domain = synthaser.Domain(start=0, end=100, type="KS", domain="PKS_KS")
+    domain = base.Domain(start=0, end=100, type="KS", domain="PKS_KS")
     result_dict = {"start": 0, "end": 100, "type": "KS", "domain": "PKS_KS"}
     assert domain.to_dict() == result_dict
 
@@ -128,7 +128,7 @@ def test_Domain_serialisation(tmp_path):
     json_file.write_text(domain.to_json())
 
     with json_file.open() as js:
-        from_json = synthaser.Domain.from_json(js)
+        from_json = base.Domain.from_json(js)
 
     assert from_json.start == 0
     assert from_json.end == 100
@@ -139,20 +139,46 @@ def test_Domain_serialisation(tmp_path):
 @pytest.fixture
 def domains():
     return [
-        synthaser.Domain(start=0, end=90, type="KS", domain="PKS_KS"),
-        synthaser.Domain(start=10, end=80, type="KS", domain="PKS"),
-        synthaser.Domain(start=100, end=200, type="AT", domain="PKS_AT"),
-        synthaser.Domain(start=130, end=190, type="AT", domain="Acyl_transf_1"),
+        base.Domain(start=0, end=90, type="KS", domain="PKS_KS"),
+        base.Domain(start=10, end=80, type="KS", domain="PKS"),
+        base.Domain(start=100, end=200, type="AT", domain="PKS_AT"),
+        base.Domain(start=130, end=190, type="AT", domain="Acyl_transf_1"),
     ]
 
 
 @pytest.fixture
 def synthase(domains):
-    synth = synthaser.Synthase(
+    synth = base.Synthase(
         header="test", sequence="A" * 200, domains=domains, type="PKS", subtype="NR-PKS"
     )
     synth.filter_overlapping_domains()
     return synth
+
+
+def test_domain_repr(domains):
+    assert repr(domains[0]) == "PKS_KS [KS] 0-90"
+
+
+def test_domain_eq(domains):
+    assert domains[0] == domains[0]
+    assert domains[0] != domains[1]
+    with pytest.raises(NotImplementedError):
+        domains[0] == 1
+
+
+def test_synthase_repr(synthase):
+    assert repr(synthase) == "test\tKS-AT"
+
+
+def test_synthase_eq(synthase):
+    synthase2 = base.Synthase(header="test")
+    assert synthase == synthase2
+
+    synthase2.header = "test2"
+    assert synthase != synthase2
+
+    with pytest.raises(NotImplementedError):
+        synthase == 1
 
 
 def test_Synthase_serialisation(synthase, domains, tmp_path):
@@ -174,7 +200,7 @@ def test_Synthase_serialisation(synthase, domains, tmp_path):
     json_file.write_text(synthase.to_json())
 
     with json_file.open() as js:
-        from_json = synthaser.Synthase.from_json(js)
+        from_json = base.Synthase.from_json(js)
 
     assert from_json.header == "test"
     assert from_json.sequence == "A" * 200
@@ -198,11 +224,11 @@ def test_Synthase_architecture(synthase):
     synthase.type = "Hybrid"
     synthase.domains.extend(
         [
-            synthaser.Domain(start=200, end=250, type="ACP", domain="PKS_PP"),
-            synthaser.Domain(start=250, end=350, type="C", domain="Condensation"),
-            synthaser.Domain(start=350, end=450, type="A", domain="A_NRPS"),
-            synthaser.Domain(start=450, end=550, type="ACP", domain="PKS_PP"),
-            synthaser.Domain(start=550, end=650, type="TR", domain="Thioester-redct"),
+            base.Domain(start=200, end=250, type="ACP", domain="PKS_PP"),
+            base.Domain(start=250, end=350, type="C", domain="Condensation"),
+            base.Domain(start=350, end=450, type="A", domain="A_NRPS"),
+            base.Domain(start=450, end=550, type="ACP", domain="PKS_PP"),
+            base.Domain(start=550, end=650, type="TR", domain="Thioester-redct"),
         ]
     )
     assert synthase.architecture == "KS-AT-ACP-C-A-T-R"
@@ -234,6 +260,10 @@ def test_Synthase_gradient(synthase):
     )
     assert synthase.gradient == gradient
 
+    synthase.sequence = ""
+    with pytest.raises(ValueError):
+        gradient = synthase.gradient
+
 
 def test_Synthase_polygon(synthase):
     """Test generation of Synthase polygon SVG element.
@@ -261,25 +291,29 @@ def test_Synthase_polygon(synthase):
 @pytest.fixture
 def figure():
     synthases = [
-        synthaser.Synthase(
+        base.Synthase(
             header="hrpks1", sequence="A" * 1000, type="PKS", subtype="HR-PKS"
         ),
-        synthaser.Synthase(
+        base.Synthase(
             header="hrpks2", sequence="A" * 1100, type="PKS", subtype="HR-PKS"
         ),
-        synthaser.Synthase(
-            header="nrpks", sequence="A" * 800, type="PKS", subtype="NR-PKS"
-        ),
-        synthaser.Synthase(
+        base.Synthase(header="nrpks", sequence="A" * 800, type="PKS", subtype="NR-PKS"),
+        base.Synthase(
             header="hybrid", sequence="A" * 2000, type="Hybrid", subtype="Hybrid"
         ),
-        synthaser.Synthase(
-            header="nrps", sequence="A" * 1500, type="NRPS", subtype="NRPS"
-        ),
+        base.Synthase(header="nrps", sequence="A" * 1500, type="NRPS", subtype="NRPS"),
     ]
 
-    figure = synthaser.Figure(synthases=synthases)
+    figure = base.Figure(synthases=synthases)
     return figure
+
+
+def test_Figure_eq(figure):
+    assert figure == figure
+    figure2 = base.Figure(synthases=figure.synthases[:-1])
+    assert figure != figure2
+    with pytest.raises(NotImplementedError):
+        figure == 1
 
 
 def test_Figure_serialisation(figure, tmp_path):
@@ -287,7 +321,7 @@ def test_Figure_serialisation(figure, tmp_path):
     json_file = tmp_path / "json"
     json_file.write_text(figure.to_json())
     with json_file.open() as js:
-        figure2 = synthaser.Figure.from_json(js)
+        figure2 = base.Figure.from_json(js)
     assert figure == figure2
 
 
@@ -299,6 +333,8 @@ def test_Figure_get(figure):
 
 @pytest.mark.parametrize("width,result", [(1000, 0.499), (500, 0.249)])
 def test_Figure_scale_factor(figure, width, result):
+    with pytest.raises(ValueError):
+        figure.scale_factor(-1)
     assert figure.scale_factor(width) == result
 
 
@@ -321,7 +357,7 @@ def anid():
     results = TEST_DIR / "anid.tsv"
     fasta = TEST_DIR / "anid.faa"
     with results.open() as res, fasta.open() as faa:
-        figure = synthaser.Figure.from_cdsearch_results(res, query_handle=faa)
+        figure = base.Figure.from_cdsearch_results(res, query_handle=faa)
     return figure
 
 
@@ -332,7 +368,7 @@ def test_Figure_from_cdsearch_results(anid):
     """
     test_figure_json = TEST_DIR / "anid.json"
     with test_figure_json.open() as js:
-        test_figure = synthaser.Figure.from_json(js)
+        test_figure = base.Figure.from_json(js)
     assert str(anid) == str(test_figure)
     assert anid == test_figure
 
@@ -355,3 +391,20 @@ def test_Figure_add_query_sequences(figure):
         figure.add_query_sequences(sequences={"not_in_figure": "ACGT"})
     figure.add_query_sequences(sequences={"hrpks1": "ACGT", "nrps": "ACGT"})
     assert figure["hrpks1"].sequence == "ACGT"
+
+
+def test_Figure_sort_synthases_by_length(figure, domains):
+    # Test sorting by sequence length
+    ordered = [figure.synthases[x] for x in (3, 4, 1, 0, 2)]
+    figure.sort_synthases_by_length()
+    assert figure.synthases == ordered
+
+    # Clear sequences, add increasing number of domains
+    for i, synthase in enumerate(figure.synthases):
+        synthase.domains = domains[:i]
+        synthase.sequence = ""
+
+    # Test sorting by architecture
+    ordered = [figure.synthases[x] for x in (4, 3, 2, 1, 0)]
+    figure.sort_synthases_by_length()
+    assert figure.synthases == ordered

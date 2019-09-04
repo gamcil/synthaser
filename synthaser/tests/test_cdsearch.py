@@ -11,7 +11,9 @@ from pathlib import Path
 import json
 import pytest
 
-from cdsearch import CDSearch
+import requests
+
+from synthaser.cdsearch import CDSearch
 
 
 @pytest.fixture
