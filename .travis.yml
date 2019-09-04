@@ -1,8 +1,10 @@
 language: python
-script: pytest --cov=tests/
 install:
   - pip install -r requirements.txt
   - pip install -e .
+  - pip install pytest-cov
   - pip install coveralls
+script:
+  - pytest --cov=tests/
 after_success:
   - coveralls
