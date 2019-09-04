@@ -1,6 +1,6 @@
 # synthaser
 [![Build Status](https://travis-ci.org/gamcil/synthaser.svg?branch=master)](https://travis-ci.org/gamcil/synthaser)
-[![Coverage Status](https://coveralls.io/repos/github/gamcil/synthaser/badge.svg?branch=master)](https://coveralls.io/github/gamcil/synthaser?branch=master)
+[![Coverage Status](https://coveralls.io/repos/github/gamcil/synthaser/badge.png?branch=master)](https://coveralls.io/github/gamcil/synthaser?branch=master)
 
 ## Process
 `synthaser` parses the results of a batch NCBI conserved domain search and determines
