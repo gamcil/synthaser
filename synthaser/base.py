@@ -18,7 +18,7 @@ from itertools import groupby
 from operator import attrgetter
 from tempfile import NamedTemporaryFile as NTF
 
-from cdsearch import CDSearch
+from .cdsearch import CDSearch
 
 logging.basicConfig(level=logging.INFO)
 log = logging.getLogger(__name__)
@@ -98,6 +98,11 @@ class Synthase:
     def __repr__(self):
         return f"{self.header}\t{self.architecture}"
 
+    def __eq__(self, other):
+        if isinstance(other, type(self)):
+            return self.header == other.header
+        raise NotImplementedError
+
     def to_dict(self):
         return {
             "header": self.header,
@@ -125,10 +130,7 @@ class Synthase:
         return Synthase.from_dict(json.load(json_file))
 
     def filter_overlapping_domains(self):
-        """Determine domain architecture of a synthase given a list of domains.
-
-        Iterates overlapping domain groups, then saves the largest hit of each.
-        """
+        """Filter overlapping Domains on this Synthase, saving best of each group."""
         self.domains = [
             max(group, key=lambda x: x.end - x.start)
             for group in group_overlapping_hits(self.domains)
@@ -149,8 +151,8 @@ class Synthase:
             if self.type == "Hybrid":
                 for start, domain in enumerate(self.domains):
                     if domain.type == "C":
-                        start += 1
                         break
+                    start += 1
 
             for domain in self.domains[start:]:
                 if domain.type in replace:
@@ -171,8 +173,10 @@ class Synthase:
         (white/colour at start, then colour/white at end), so these
         will be drawn as hard edges rather than actual gradients
         """
+        if not self.sequence:
+            raise ValueError("Synthase has no sequence")
 
-        stops = ['<stop offset="0%" stop-color="white" />']
+        stops = []
         sequence_length = len(self.sequence)
 
         for domain in self.domains:
@@ -180,10 +184,10 @@ class Synthase:
             end_pct = int(domain.end / sequence_length * 100)
             colour = COLOURS[domain.type]
             stops.append(
-                f'<stop offset="{start_pct}%" stop-color="white" />\n'
-                f'<stop offset="{start_pct}%" stop-color="{colour}" />\n'
-                f'<stop offset="{end_pct}%" stop-color="{colour}" />\n'
-                f'<stop offset="{end_pct}%" stop-color="white" />'
+                f'<stop offset="{start_pct}%" stop-color="white"/>\n'
+                f'<stop offset="{start_pct}%" stop-color="{colour}"/>\n'
+                f'<stop offset="{end_pct}%" stop-color="{colour}"/>\n'
+                f'<stop offset="{end_pct}%" stop-color="white"/>'
             )
 
         return (
@@ -192,7 +196,7 @@ class Synthase:
             "".format(self.header, "\n".join(stops))
         )
 
-    def polygon(self, scale_factor=2, info_fsize=12, arrow_height=14):
+    def polygon(self, scale_factor=1, info_fsize=12, arrow_height=14):
         """Build SVG representation of one synthase.
 
         Length is determined by the supplied scale factor. Then, pairs of X and Y coordinates
@@ -218,11 +222,12 @@ class Synthase:
         """
         sequence_length = len(self.sequence)
         scaled_length = scale_factor * sequence_length
-        bottom_y = 5 + arrow_height
-        middle_y = 5 + arrow_height / 2
+        info_fsize_scaled = info_fsize * 0.9
+        bottom_y = info_fsize_scaled + arrow_height
+        middle_y = info_fsize_scaled + arrow_height / 2
 
-        ax, ay = 0, 5
-        bx, by = scaled_length - 10, 5
+        ax, ay = 0, info_fsize_scaled
+        bx, by = scaled_length - 10, info_fsize_scaled
         cx, cy = scaled_length, middle_y
         dx, dy = scaled_length - 10, bottom_y
         ex, ey = 0, bottom_y
@@ -231,7 +236,7 @@ class Synthase:
         information = f"{self.header}, {sequence_length}aa, {self.architecture}"
 
         return (
-            f'<text y="0" font-size="{info_fsize}">{information}</text>'
+            f'<text dominant-baseline="hanging" font-size="{info_fsize}">{information}</text>'
             f'<polygon id="{self.header}" points="{points}"'
             f' fill="url(#{self.header}_doms)" stroke="black"'
             ' stroke-width="1.5"/>'
@@ -251,6 +256,16 @@ class Domain:
 
     def __repr__(self):
         return f"{self.domain} [{self.type}] {self.start}-{self.end}"
+
+    def __eq__(self, other):
+        if isinstance(other, type(self)):
+            return (
+                self.type == other.type
+                and self.domain == other.domain
+                and self.start == other.start
+                and self.end == other.end
+            )
+        raise NotImplementedError
 
     @classmethod
     def from_cdsearch_row(cls, row):
@@ -301,6 +316,11 @@ class Figure:
             for subtype, group in self.iterate_synthase_types()
         )
 
+    def __eq__(self, other):
+        if isinstance(other, type(self)):
+            return self.synthases == other.synthases
+        raise NotImplementedError
+
     def __getitem__(self, key):
         for synthase in self.synthases:
             if synthase.header == key:
@@ -309,72 +329,115 @@ class Figure:
 
     def scale_factor(self, width):
         """Calculate the scale factor for drawing synthases."""
+        if width < 0:
+            raise ValueError("Width must be greater than 0")
         largest = max(self.synthases, key=attrgetter("sequence_length"))
         return (width - 2) / largest.sequence_length
 
-    def iterate_synthase_types(self):
-        """Group synthases by their types and yield."""
-
+    def sort_synthases_by_length(self):
+        """Sort Synthase objects by length of their sequences or domain architecture."""
         if any(not synthase.sequence for synthase in self.synthases):
             self.synthases.sort(key=lambda s: len(s.architecture), reverse=True)
         else:
             self.synthases.sort(key=attrgetter("sequence_length"), reverse=True)
 
+    def iterate_synthase_types(self):
+        """Group synthases by their types and yield."""
+        self.sort_synthases_by_length()
         self.synthases.sort(key=attrgetter("type", "subtype"))
         for subtype, group in groupby(self.synthases, key=attrgetter("subtype")):
             yield subtype, list(group)
 
+    @staticmethod
+    def build_polygon_block(
+        subtype,
+        synthases,
+        scale_factor,
+        spacing,
+        arrow_height,
+        info_fsize,
+        header_fsize,
+    ):
+        """Generate the SVG for a block of Synthase objects.
+
+        Parameters
+        ----------
+
+        Returns
+        -------
+        block : str
+            SVG string
+        offset : int
+            Cumulative total offset in this block. This is returned so the following
+            block can be positioned below the one generated here.
+        """
+
+        block = f'<text dominant-baseline="hanging" font-size="{header_fsize}" font-weight="bold">{subtype}</text>'
+        offset = header_fsize
+        for synthase in synthases:
+            polygon = synthase.polygon(
+                scale_factor, info_fsize=info_fsize, arrow_height=arrow_height
+            )
+            block += f'\n<g transform="translate(1,{offset})">\n{polygon}\n</g>'
+            offset += info_fsize + arrow_height + 4 + spacing
+        return block, offset
+
     def visualise(
-        self, spacing=32, width=600, header_fsize=15, info_fsize=12, arrow_height=12
+        self,
+        arrow_height=12,
+        arrow_spacing=4,
+        block_spacing=16,
+        header_fsize=15,
+        info_fsize=12,
+        width=600,
     ):
         """Build the SVG figure.
 
         Parameters
         ----------
-        spacing : int
+        arrow_height : int
+            Height of synthase arrows in pixels.
+        arrow_spacing : int
             Vertical spacing between each synthase in pixels.
-        width : int
-            Width of generated SVG in pixels.
+        block_spacing : int
+            Vertical spacing between each subtype synthase block.
         header_fsize : int
             Font size of synthase type headers.
         info_fsize : int
             Font size of synthase information subheaders.
-        arrow_height : int
-            Height of synthase arrows in pixels.
+        width : int
+            Width of generated SVG in pixels.
 
         Returns
         -------
         str
             Final SVG figure.
         """
-        polygons, gradients = "", []
         scale_factor = self.scale_factor(width)
-        offset = header_fsize * 0.8
 
-        # TODO auto calculate spacing based on px->pt of info string + arrow height
+        blocks = ""
+        offset = 3
 
         for subtype, synthases in self.iterate_synthase_types():
             log.info("Subtype=%s, %i synthases", subtype, len(synthases))
-            polygons += (
-                f'\n<g>\n<text x="-1" y="{offset}" font-size="{header_fsize}"'
-                f' font-weight="bold">{subtype}</text>'
+            block, height = self.build_polygon_block(
+                subtype,
+                synthases,
+                scale_factor,
+                arrow_spacing,
+                arrow_height,
+                info_fsize,
+                header_fsize,
             )
-            offset += spacing / 2
+            blocks += f'<g transform="translate(0,{offset})">\n{block}\n</g>'
+            offset += height + block_spacing
 
-            for synthase in synthases:
-                polygon = synthase.polygon(
-                    scale_factor, info_fsize=info_fsize, arrow_height=arrow_height
-                )
-                polygons += f'\n<g transform="translate(1,{offset})">\n{polygon}\n</g>'
-                gradients.append(synthase.gradient)
-                offset += spacing
-
-            polygons += "\n</g>"
-            offset += spacing / 2
-
-        header = f'<svg width="{width}" height="{offset - spacing}">'
-        gradients = "\n".join(gradients)
-        return f"{header}\n{gradients}\n{polygons}\n</svg>"
+        return '<svg width="{}" height="{}">\n{}\n{}\n</svg>'.format(
+            width,
+            offset - block_spacing - arrow_spacing - 4,
+            "\n".join(synthase.gradient for synthase in self.synthases),
+            blocks,
+        )
 
     def to_json(self):
         """Serialise Figure to JSON."""
@@ -389,7 +452,7 @@ class Figure:
         return cls([Synthase.from_dict(record) for record in json.load(json_file)])
 
     @classmethod
-    def from_cdsearch_results(cls, results_handle, query_file=None):
+    def from_cdsearch_results(cls, results_handle, query_handle=None):
         """Instantiate a new Figure from CD-search results file.
 
         results_handle should be an open file handle.
@@ -432,7 +495,7 @@ class Figure:
 
             synthase.domains.append(domain)
 
-        if synthase:
+        if synthase:  # add the final synthase from the loop
             figure.synthases.append(synthase)
 
         for synthase in figure.synthases:
@@ -452,13 +515,14 @@ class Figure:
                     synthase.type,
                 )
 
-        if query_file:
-            figure.add_query_sequences(query_file)
+        if query_handle:
+            figure.add_query_sequences(query_handle)
 
+        figure.sort_synthases_by_length()
         return figure
 
     @classmethod
-    def from_cdsearch(cls, query_file, check_interval=5, max_retries=10):
+    def from_cdsearch(cls, query_file, check_interval=10, max_retries=20):
         """Launch new CDSearch job and return a populated Figure instance."""
         cd = CDSearch()
         with NTF() as results:
@@ -469,30 +533,37 @@ class Figure:
                 max_retries=max_retries,
             )
             results.seek(0)
-            return cls.from_cdsearch_results(results, query_file=query_file)
+            figure = cls.from_cdsearch_results(results)
 
-    def add_query_sequences(self, query_file):
+        with open(query_file) as query_handle:
+            figure.add_query_sequences(query_handle=query_handle)
+
+        return figure
+
+    def add_query_sequences(self, query_handle=None, sequences=None):
         """Add sequences from query FASTA file to the Figure."""
-        with open(query_file) as query:
-            sequences = parse_fasta(query)
+        if query_handle and not sequences:
+            sequences = parse_fasta(query_handle)
         for header, sequence in sequences.items():
             try:
                 self[header].sequence = sequence
-            except KeyError:
-                log.warning("Could not match '%s' to synthase in results", header)
+            except KeyError as exc:
+                raise KeyError(
+                    f"Could not match '{header}' to synthase in results"
+                ) from exc
+
+
+def hits_overlap(a, b, threshold=0.9):
+    """Return True if Domain overlap is greater than threshold * domain size."""
+    start, end = max(a.start, b.start), min(a.end, b.end)
+    overlap = max(0, end - start)
+    a_threshold = threshold * (a.end - a.start)
+    b_threshold = threshold * (b.end - b.start)
+    return overlap >= a_threshold or overlap >= b_threshold
 
 
 def group_overlapping_hits(domains):
     """Iterator that groups Hit namedtuples based on overlapping locations."""
-
-    def overlapping(a, b):
-        """Return True if Hits overlap, checking both directions."""
-        one_len, two_len = a.end - a.start, b.end - b.start
-        smallest = a if one_len <= two_len else b
-        intersect = set(range(a.start, a.end)).intersection(range(b.start, b.end))
-        overlap = len(intersect) / (smallest.end - smallest.start)
-        return True if overlap > 0.9 else False
-
     domains.sort(key=attrgetter("start"))
     i, total = 0, len(domains)
     while i < total:
@@ -503,7 +574,7 @@ def group_overlapping_hits(domains):
             break
         for j in range(i + 1, total):  # iterate rest
             future = domains[j]  # grab next hit
-            if overlapping(current, future):
+            if hits_overlap(current, future):
                 group.append(future)  # add if contained
             else:
                 yield group  # else yield to iterator
