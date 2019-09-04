@@ -45,7 +45,6 @@ def make_tmp_config(tmp_path, config):
 
 
 def test_default_CDSearch_init(cdsearch):
-    assert cdsearch.base_cfg == Path("cdsearch.json")
     assert cdsearch.config == {
         "db": "cdd",
         "smode": "auto",
