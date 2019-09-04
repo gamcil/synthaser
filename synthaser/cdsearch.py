@@ -26,11 +26,15 @@ logging.basicConfig(level=logging.INFO)
 log = logging.getLogger(__name__)
 
 
+# TODO:
+#   1. Use api_key parameter in entrez requests ?
+
+
 class CDSearch:
     """Run, check status and retrieve results of a batch CD-search run."""
 
     base_url = "https://www.ncbi.nlm.nih.gov/Structure/bwrpsb/bwrpsb.cgi?"
-    base_cfg = Path("cdsearch.json")
+    base_cfg = Path(__file__).resolve().parent / "cdsearch.json"
 
     def __init__(self, config_file=None):
         self.load_config(config_file=config_file)
