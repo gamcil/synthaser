@@ -18,7 +18,7 @@ from itertools import groupby
 from operator import attrgetter
 from tempfile import NamedTemporaryFile as NTF
 
-from .cdsearch import CDSearch
+from synthaser.cdsearch import CDSearch
 
 logging.basicConfig(level=logging.INFO)
 log = logging.getLogger(__name__)
@@ -269,7 +269,18 @@ class Domain:
 
     @classmethod
     def from_cdsearch_row(cls, row):
-        """Instantiate a new Domain from a row in a CD-search results file."""
+        """Instantiate a new Domain from a row in a CD-search results file.
+
+        Parameters
+        ----------
+        row : str
+            Tab-separated row from a CDSearch results file.
+
+        Raises
+        ------
+        ValueError
+            If the domain in this row is not in the DOMAINS dictionary.
+        """
         _, _, _, start, end, _, _, _, domain, *_ = row.split("\t")
         for domain_type, domains in DOMAINS.items():
             if domain in domains:
@@ -283,6 +294,7 @@ class Domain:
         return sequence[self.start - 1 : self.end]
 
     def to_dict(self):
+        """Serialise this object to dict of its attributes."""
         return {
             "type": self.type,
             "domain": self.domain,
@@ -291,6 +303,7 @@ class Domain:
         }
 
     def to_json(self):
+        """Serialise this object to JSON."""
         return json.dumps(self.to_dict())
 
     @classmethod
@@ -301,6 +314,11 @@ class Domain:
 class Figure:
     """The Figure class acts as a repository for all Synthase objects, as well as
     holding all methods required for generating the final SVG figure.
+
+    Attributes
+    ----------
+    synthases : list
+        Synthase objects to be drawn.
     """
 
     def __init__(self, synthases=None):
@@ -328,21 +346,50 @@ class Figure:
         raise KeyError(f"No synthase with header '{key}'")
 
     def scale_factor(self, width):
-        """Calculate the scale factor for drawing synthases."""
+        """Calculate the scale factor for drawing synthases.
+
+        Parameters
+        ----------
+        width : int
+            Total width, in pixels, of the SVG figure.
+
+        Returns
+        -------
+        float :
+            Scaling factor that will be used when calculating the width of each Synthase polygon.
+
+        Raises
+        ------
+        ValueError
+            If `width` is a negative number.
+        """
         if width < 0:
             raise ValueError("Width must be greater than 0")
         largest = max(self.synthases, key=attrgetter("sequence_length"))
         return (width - 2) / largest.sequence_length
 
     def sort_synthases_by_length(self):
-        """Sort Synthase objects by length of their sequences or domain architecture."""
+        """Sort Synthase objects by length of their sequences or domain architecture.
+
+        Synthases are only sorted by domain architecture in the absence of sequences.
+        """
         if any(not synthase.sequence for synthase in self.synthases):
             self.synthases.sort(key=lambda s: len(s.architecture), reverse=True)
         else:
             self.synthases.sort(key=attrgetter("sequence_length"), reverse=True)
 
     def iterate_synthase_types(self):
-        """Group synthases by their types and yield."""
+        """Group synthases by their types and yield.
+
+        Synthases are first reverse sorted in-place by their sequence or architecture
+        length. They are then sorted by their `type` and `subtype` attributes, grouped
+        by `subtype` and yielded.
+
+        Yields
+        ------
+        (str, list)
+            A subtype and a list of Synthase objects with that subtype.
+        """
         self.sort_synthases_by_length()
         self.synthases.sort(key=attrgetter("type", "subtype"))
         for subtype, group in groupby(self.synthases, key=attrgetter("subtype")):
@@ -353,7 +400,7 @@ class Figure:
         subtype,
         synthases,
         scale_factor,
-        spacing,
+        arrow_spacing,
         arrow_height,
         info_fsize,
         header_fsize,
@@ -362,24 +409,34 @@ class Figure:
 
         Parameters
         ----------
+        subtype : str
+            The subtype of the Synthase objects supplied to this method.
+        synthases : list
+            Synthase objects of a certain subtype to be visualised.
+
+        See Figure.visualise() for description of other parameters.
 
         Returns
         -------
         block : str
-            SVG string
+            SVG of this Synthase subtype block.
         offset : int
             Cumulative total offset in this block. This is returned so the following
             block can be positioned below the one generated here.
         """
 
-        block = f'<text dominant-baseline="hanging" font-size="{header_fsize}" font-weight="bold">{subtype}</text>'
+        block = (
+            '<text dominant-baseline="hanging"'
+            f' font-size="{header_fsize}"'
+            f' font-weight="bold">{subtype}</text>'
+        )
         offset = header_fsize
         for synthase in synthases:
             polygon = synthase.polygon(
                 scale_factor, info_fsize=info_fsize, arrow_height=arrow_height
             )
             block += f'\n<g transform="translate(1,{offset})">\n{polygon}\n</g>'
-            offset += info_fsize + arrow_height + 4 + spacing
+            offset += info_fsize + arrow_height + 4 + arrow_spacing
         return block, offset
 
     def visualise(
@@ -396,17 +453,18 @@ class Figure:
         Parameters
         ----------
         arrow_height : int
-            Height of synthase arrows in pixels.
+            The height, in pixels, of the generated polygon for each Synthase.
         arrow_spacing : int
-            Vertical spacing between each synthase in pixels.
+            Vertical spacing, in pixels, to insert between each Synthase polygon.
         block_spacing : int
-            Vertical spacing between each subtype synthase block.
+            Vertical spacing, in pixels, to insert between each subtype block of
+            Synthases.
         header_fsize : int
-            Font size of synthase type headers.
+            Font size of Synthase type headers.
         info_fsize : int
-            Font size of synthase information subheaders.
+            Font size of Synthase information subheaders.
         width : int
-            Width of generated SVG in pixels.
+            Width, in pixels, of the final generated SVG.
 
         Returns
         -------
@@ -445,10 +503,7 @@ class Figure:
 
     @classmethod
     def from_json(cls, json_file):
-        """Load JSON serialised Figure.
-
-        Expects an open file handle.
-        """
+        """Load Figure from an open JSON file handle."""
         return cls([Synthase.from_dict(record) for record in json.load(json_file)])
 
     @classmethod
@@ -459,13 +514,19 @@ class Figure:
 
         Parameters
         ----------
-        cd_search : str
-            CD-search results
+        results_handle: open file handle
+            An open CD-Search results file handle. If you used the website to analyse your
+            sequences, the file you should download is Domain hits, Data mode: Full, ASN
+            text. When using a CDSearch object, this format is automatically selected.
+
+        query_handle: open file handle, optional
+            An open file handle for the sequences used in the CD-search run. Sequences
+            can be added later via Figure.add_query_sequences().
 
         Returns
         -------
-        domains : dict
-            Query:[hits]
+        Figure:
+            A Figure object built from the CDSearch results.
         """
         figure = cls()
         _query = ""
@@ -522,16 +583,24 @@ class Figure:
         return figure
 
     @classmethod
-    def from_cdsearch(cls, query_file, check_interval=10, max_retries=20):
-        """Launch new CDSearch job and return a populated Figure instance."""
+    def from_cdsearch(cls, query_file, **kwargs):
+        """Convenience function to directly instantiate a Figure from a new CDSearch job.
+
+        Parameters
+        ----------
+        query_file : str
+            Path to a FASTA file containing query sequences to be analysed.
+
+        All additional keyword arguments are passed to CDSearch.run().
+
+        Returns
+        -------
+        Figure
+            Figure built from the CDSearch query.
+        """
         cd = CDSearch()
         with NTF() as results:
-            cd.run(
-                query_file=query_file,
-                output_file_handle=results,
-                check_interval=check_interval,
-                max_retries=max_retries,
-            )
+            cd.run(query_file=query_file, output_file_handle=results, **kwargs)
             results.seek(0)
             figure = cls.from_cdsearch_results(results)
 
@@ -541,7 +610,18 @@ class Figure:
         return figure
 
     def add_query_sequences(self, query_handle=None, sequences=None):
-        """Add sequences from query FASTA file to the Figure."""
+        """Add sequences from query FASTA file to the Figure.
+
+        Parameters
+        ----------
+        query_handle : open file handle
+            Open file handle of a FASTA file containing sequences corresponding to the
+            Synthases in this objects `synthases` attribute.
+
+        sequences : dict
+            A pre-populated dictionary containing sequences corresponding to the
+            Synthases in this objects `synthases` attribute.
+        """
         if query_handle and not sequences:
             sequences = parse_fasta(query_handle)
         for header, sequence in sequences.items():
@@ -554,7 +634,24 @@ class Figure:
 
 
 def hits_overlap(a, b, threshold=0.9):
-    """Return True if Domain overlap is greater than threshold * domain size."""
+    """Return True if Domain overlap is greater than threshold * domain size.
+
+    Parameters
+    ----------
+    a : Domain
+        First Domain object.
+    b : Domain
+        Second Domain object.
+    threshold : int
+        Minimum percentage to classify two Domains as overlapping. By default,
+        `threshold` is set to 0.9, i.e. two Domains are considered as overlapping if
+        the total amount of overlap is greater than 90% of either Domain hit.
+
+    Returns
+    -------
+    bool
+        True if Domain overlap exceeds threshold, False if not.
+    """
     start, end = max(a.start, b.start), min(a.end, b.end)
     overlap = max(0, end - start)
     a_threshold = threshold * (a.end - a.start)
@@ -562,8 +659,21 @@ def hits_overlap(a, b, threshold=0.9):
     return overlap >= a_threshold or overlap >= b_threshold
 
 
-def group_overlapping_hits(domains):
-    """Iterator that groups Hit namedtuples based on overlapping locations."""
+def group_overlapping_hits(domains, threshold=0.9):
+    """Iterator that groups Domain objects based on overlapping locations.
+
+    Parameters
+    ----------
+    domains : list, tuple
+        Domain objects to be grouped.
+    threshold : float
+        See hits_overlap().
+
+    Yields
+    ------
+    group : list
+        A group of overlapping Domain objects, as computed by hits_overlap().
+    """
     domains.sort(key=attrgetter("start"))
     i, total = 0, len(domains)
     while i < total:
@@ -574,7 +684,7 @@ def group_overlapping_hits(domains):
             break
         for j in range(i + 1, total):  # iterate rest
             future = domains[j]  # grab next hit
-            if hits_overlap(current, future):
+            if hits_overlap(current, future, threshold):
                 group.append(future)  # add if contained
             else:
                 yield group  # else yield to iterator
@@ -585,7 +695,24 @@ def group_overlapping_hits(domains):
 
 
 def parse_fasta(fasta):
-    """Parse an open FASTA file for sequences."""
+    """Parse an open FASTA file for sequences.
+
+    Parameters
+    ----------
+    fasta : str
+        Either an open file handle of a FASTA file, or newline split string (e.g. read
+        in via readlines()) that can be iterated over.
+
+    Returns
+    -------
+    sequences : dict
+        All sequences in the FASTA file keyed on their header lines. For example,
+            >sequence
+            ACGTACGTACGT
+
+        Will be stored as:
+            {"sequence": "ACGTACGTACGT"}
+    """
     sequences = {}
     for line in fasta:
         try:
@@ -601,13 +728,32 @@ def parse_fasta(fasta):
 
 
 def wrap_fasta(sequence, limit=80):
-    """ Wrap FASTA record to 80 characters per line.
+    """Wrap FASTA record to 80 characters per line.
+
+    Parameters
+    ----------
+    sequence : str
+        Sequence to be wrapped.
+
+    limit : int
+        Total characters per line.
+
+    Returns
+    -------
+    str
+        Sequence wrapped to maximum `limit` characters per line.
     """
     return "\n".join(sequence[i : i + limit] for i in range(0, len(sequence), limit))
 
 
 def assign_type(synthase):
     """Determine the broad biosynthetic type of a Synthase.
+
+    Classification rules
+    --------------------
+    Hybrid (PKS-NRPS): both a beta-ketoacyl synthase (KS) and adenylation (A) domains
+    Polyketide synthase (PKS): a KS domain
+    Nonribosomal peptide synthase (NRPS): an A domain
 
     Parameters
     ----------
@@ -617,7 +763,12 @@ def assign_type(synthase):
     Returns
     -------
     str
-        The biosynthetic type of the given Synthase ("hybrid", "pks", "nrps").
+        The biosynthetic type of the given Synthase (hybrid, pks, nrps).
+
+    Raises
+    ------
+    ValueError
+        If no identifying domain (KS, A) is found.
     """
     types = set(domain.type for domain in synthase.domains)
     if {"KS", "A"}.issubset(types):
@@ -632,8 +783,26 @@ def assign_type(synthase):
 def assign_subtype(synthase):
     """Determine the biosynthetic subtype of a Synthase.
 
-    For example, a PKS is considered highly-reducing (HR-PKS) given the presence of
-    reducing domains (enoyl-reductase, keto-reductase, dehydratase).
+    Subtypes are determined by the following rules:
+
+    Polyketide synthase (PKS):
+
+    1) Highly-reducing (HR-PKS): enoyl-reductase (ER), keto-reductase (KR) and
+       dehydratase (DH)
+    2) Partially-reducing (PR-PKS): any, but not all, reducing domains used to
+       classify a HR-PKS
+    3) Non-reducing (NR-PKS): no reducing domains, but beta-ketoacyl synthase (KS)
+       and acyltransferase (AT) present
+    4) PKS-like: at least a KS domain
+
+    Nonribosomal peptide synthetase (NRPS):
+
+    1) NRPS: full NRPS module, consisting of adenylation (A), peptidyl-carrier (PCP,
+       aka T) and condensation (C) domains
+    2) NRPS-like: at least an A domain
+
+    If a non-PKS/NRPS Synthase is supplied, then this function will return its `type`
+    attribute.
 
     Parameters
     ----------
@@ -648,15 +817,16 @@ def assign_subtype(synthase):
     Raises
     ------
     ValueError
-        Synthase has type other than "pks" or "nrps"
-        No subtype could be assigned
+        Synthase has type other than "pks" or "nrps" or no subtype could be assigned.
+
     """
     types = set(domain.type for domain in synthase.domains)
     if synthase.type == "PKS":
         subtypes = [
             ("HR-PKS", all, {"ER", "KR", "DH"}),
-            ("PR-PKS", any, {"KR", "DH"}),
+            ("PR-PKS", any, {"ER", "KR", "DH"}),
             ("NR-PKS", all, {"KS", "AT"}),
+            ("PKS-like", any, {"KS"}),
         ]
     elif synthase.type == "NRPS":
         subtypes = [("NRPS", all, {"A", "T", "C"}), ("NRPS-like", any, {"A"})]
