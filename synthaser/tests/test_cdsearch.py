@@ -11,7 +11,6 @@ from pathlib import Path
 import json
 import pytest
 
-import requests
 import requests_mock
 
 from synthaser.cdsearch import CDSearch
@@ -28,16 +27,13 @@ def cdsearch():
 @pytest.fixture
 def config():
     return {
-        "settings": {
-            "db": "pfam",
-            "smode": "prec",
-            "useid1": "false",
-            "compbasedadj": "1",
-            "filter": "true",
-            "evalue": "0.05",
-            "maxhit": "500",
-        },
-        "output_folder": "..",
+        "db": "pfam",
+        "smode": "prec",
+        "useid1": "false",
+        "compbasedadj": "1",
+        "filter": "true",
+        "evalue": "0.05",
+        "maxhit": "500",
     }
 
 
@@ -61,7 +57,6 @@ def test_default_CDSearch_init(cdsearch):
         "dmode": "full",
         "tdata": "hits",
     }
-    assert cdsearch.output_folder == Path("")
 
 
 def test_CDSearch_load_config(tmp_path, config, cdsearch):
@@ -70,29 +65,25 @@ def test_CDSearch_load_config(tmp_path, config, cdsearch):
     cdsearch.load_config()
     assert cdsearch.config == default_config
 
-    with pytest.raises(IOError):
+    with pytest.raises(FileNotFoundError):
         cdsearch.load_config("fake_path")
 
     test_config = make_tmp_config(tmp_path, config)
     cdsearch.load_config(test_config)
 
-    config["settings"]["dmode"] = "full"
-    config["settings"]["tdata"] = "hits"
-    assert cdsearch.config == config["settings"]
+    config["dmode"] = "full"
+    config["tdata"] = "hits"
+    assert cdsearch.config == config
 
 
 def test_CDSearch_configure(cdsearch):
-    invalid = {"settings": {"id": 1}}
+    invalid = {"id": 1}
     with pytest.raises(ValueError):
         cdsearch.configure(invalid)
 
-    reserved = {"settings": {"dmode": 1}}
+    reserved = {"dmode": 1}
     with pytest.raises(ValueError):
         cdsearch.configure(reserved)
-
-    output = {"settings": {}, "output_folder": "test"}
-    cdsearch.configure(output)
-    assert cdsearch.output_folder == Path("test")
 
 
 def test_CDSearch_new_search(cdsearch):
