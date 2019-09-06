@@ -69,13 +69,13 @@ class CDSearch:
         """
         valid = {"db", "smode", "useid1", "compbasedadj", "filter", "evalue", "maxhit"}
         reserved = {"dmode", "tdata", "ainfmt", "qdefl", "cddefl"}
-        for key, value in config["settings"].items():
+        for key, value in config.items():
             if key not in valid:
                 if key in reserved:
                     raise ValueError(f"{key} is a reserved keyword")
                 raise ValueError(f"{key} is not a valid keyword")
 
-        self.config = config["settings"]
+        self.config = config
         self.config["dmode"] = "full"
         self.config["tdata"] = "hits"
 
