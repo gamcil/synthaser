@@ -25,8 +25,6 @@ import requests
 logging.basicConfig(level=logging.INFO)
 log = logging.getLogger(__name__)
 
-# TODO: remove output_folder/file.. just allow writing to open file handles
-
 
 class CDSearch:
     """Run, check status and retrieve results of a batch CD-search run."""
@@ -60,7 +58,6 @@ class CDSearch:
             Dictionary of synthaser and CD-search parameters.
             Schema should match (default cdsearch.json):
                 {
-                  "settings": {
                     "db": "cdd",
                     "smode": "auto",
                     "useid1": "true",
@@ -68,8 +65,6 @@ class CDSearch:
                     "filter": "false",
                     "evalue": "0.01",
                     "maxhit": "500"
-                  },
-                  "output_folder": ""
                 }
         """
         valid = {"db", "smode", "useid1", "compbasedadj", "filter", "evalue", "maxhit"}
@@ -83,11 +78,6 @@ class CDSearch:
         self.config = config["settings"]
         self.config["dmode"] = "full"
         self.config["tdata"] = "hits"
-
-        if "output_folder" in config:
-            self.output_folder = Path(config["output_folder"])
-        else:
-            self.output_folder = Path(".")
 
     def new_search(self, query_file=None, query_ids=None):
         """Run a new search against a supplied query file.
@@ -180,21 +170,9 @@ class CDSearch:
             CD-search job ID. This looks like:
                 QM3-qcdsearch-xxxxxxxxxxx-yyyyyyyyyyy
 
-        output_file : str, optional
-            Name of file that results will be saved to. If not provided, will auto
-            generate a file name from the job ID, e.g.
-                QM3-qcdsearch-xxxxxxxxxxx-yyyyyyyyyyy.tsv
-
-        output_folder : str, optional
-            Name of output folder to save results file in. If not provided, will
-            default to the folder specified in the configuration file.
-
-        output_file_handle : file handle
+        output : open file handle
             Save results to a given open file handle instead of a local file. This
             facilitates usage of e.g. tempfile objects.
-
-        force : bool
-            Overwrite pre-existing file at given output file.
 
         check_interval : int
             Total seconds to wait before checking for job completion.
@@ -206,9 +184,6 @@ class CDSearch:
         -------
         ValueError
             If no Response model is returned by self.check_status()
-        OSError
-            If output_folder is specified and is not a directory, or output_file is
-            specified, a file already exists at that path and force is False.
         """
         log.info("Checking %s has finished", cdsid)
         retries = 0
