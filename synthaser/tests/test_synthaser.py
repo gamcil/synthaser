@@ -63,7 +63,7 @@ def test_assign_type(types, result):
         ("PKS", ["DH"], "PR-PKS"),
         ("PKS", ["KR"], "PR-PKS"),
         ("PKS", ["KS", "AT"], "NR-PKS"),
-        ("PKS", ["KS"], "Other"),
+        ("PKS", ["KS"], "PKS-like"),
         ("PKS", ["AT"], "Other"),
         ("NRPS", ["A", "T", "C"], "NRPS"),
         ("NRPS", ["A", "T"], "NRPS-like"),
