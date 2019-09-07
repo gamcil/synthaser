@@ -13,9 +13,9 @@ from Bio import SeqIO
 
 
 def parse_record(record):
-    """ Parse BioPython SeqRecord object for synthases.
+    """Parse BioPython SeqRecord object for synthases.
 
-        Returns an iterator
+    Returns an iterator
     """
     for feature in record.features:
         if feature.type == "CDS":
@@ -27,8 +27,7 @@ def parse_record(record):
 
 
 def parse_feature(feature):
-    """ Parse CDS SeqFeature, returning True if it is a synthase.
-    """
+    """Parse CDS SeqFeature, returning True if it is a synthase."""
     if "sec_met" not in feature.qualifiers:
         # Need a /sec_met="Type: ..." qualifier
         return None
@@ -52,8 +51,7 @@ def parse_feature(feature):
 
 
 def write_fasta(synthases, output):
-    """ Write FASTA of Synthase namedtuples to open file handle.
-    """
+    """Write FASTA of Synthase namedtuples to open file handle."""
     fasta = [
         ">{}\n{}".format(synthase.protein_id, wrap_fasta(synthase.translation))
         for synthase in synthases
@@ -63,8 +61,7 @@ def write_fasta(synthases, output):
 
 
 def wrap_fasta(sequence, limit=80):
-    """ Wrap FASTA record to 80 characters per line.
-    """
+    """Wrap FASTA record to 80 characters per line."""
     return "\n".join(sequence[i : i + limit] for i in range(0, len(sequence), limit))
 
 

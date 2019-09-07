@@ -27,7 +27,30 @@ log = logging.getLogger(__name__)
 
 
 class CDSearch:
-    """Run, check status and retrieve results of a batch CD-search run."""
+    """The CDSearch class handles web API calls to NCBI CD-Search.
+
+    Basic usage
+    -----------
+    First, instantiate a new CDSearch object:
+
+    >>> cd = CDSearch()
+
+    Then, call CDSearch.run() on either a query FASTA file or a list of NCBI
+    identifiers and save the results to a file:
+
+    >>> with open('results.tsv', 'w') as out:
+    ...     response = cd.run(query_file='/path/to/queries.fasta', output=out)
+    ...     response = cd.run(query_ids=['AN6791.2', 'AN6000.2'], output=out)
+
+    The results will be saved to ``results.tsv``, and the Response object returned by the
+    NCBI API call is returned.
+
+    Parameters
+    ----------
+    config_file : str, optional
+        Path to a custom configuration JSON file. If this is not specified, the default
+        config distributed with synthaser (`cdsearch.json`) will be loaded.
+    """
 
     base_url = "https://www.ncbi.nlm.nih.gov/Structure/bwrpsb/bwrpsb.cgi?"
     base_cfg = Path(__file__).resolve().parent / "cdsearch.json"
@@ -52,20 +75,38 @@ class CDSearch:
     def configure(self, config):
         """Validate and set parameters in configuration file.
 
+        The supplied config dictionary should match the following schema:
+
+        >>> config
+        {
+            "db": "cdd",
+            "smode": "auto",
+            "useid1": "true",
+            "compbasedadj": "0",
+            "filter": "false",
+            "evalue": "0.01",
+            "maxhit": "500"
+        }
+
+        For a full description of CD-Search parameters, click here_.
+
+        Note that to ensure the correct results file is returned for use in `synthaser`,
+        the parameters 'dmode', 'tdata', 'ainfmt', 'qdefl' and 'cddefl' are reserved.
+        Including these in `config` will result in a ValueError.
+
+        .. _here: https://www.ncbi.nlm.nih.gov/Structure/cdd/cdd_help.shtml#BatchRPSBWebAPI_submit
+
         Parameters
         ----------
         config : dict
-            Dictionary of synthaser and CD-search parameters.
-            Schema should match (default cdsearch.json):
-                {
-                    "db": "cdd",
-                    "smode": "auto",
-                    "useid1": "true",
-                    "compbasedadj": "0",
-                    "filter": "false",
-                    "evalue": "0.01",
-                    "maxhit": "500"
-                }
+            Dictionary of CD-search parameters.
+
+        Raises
+        ------
+        ValueError
+            If a reserved or otherwise invalid keyword is encountered in the supplied
+            `config` dictionary.
+
         """
         valid = {"db", "smode", "useid1", "compbasedadj", "filter", "evalue", "maxhit"}
         reserved = {"dmode", "tdata", "ainfmt", "qdefl", "cddefl"}
@@ -80,10 +121,17 @@ class CDSearch:
         self.config["tdata"] = "hits"
 
     def new_search(self, query_file=None, query_ids=None):
-        """Run a new search against a supplied query file.
+        """Launch a new CD-Search run using a FASTA file or list of NCBI identifiers.
 
-        Accepted input is either a list of NCBI sequence identifiers (accession, GI), or
-        a FASTA formatted file containing amino acid sequences of query proteins.
+        To analyse sequences in a local FASTA file, supply the path to the file via
+        `query_file`:
+
+        >>> cdsid = cd.new_search(query_file='/path/to/queries.fasta')
+
+        Otherwise, supply a list of valid NCBI identifiers (accessions, GI numbers) via
+        `query_ids`:
+
+        >>> cdsid = cd.new_search(query_ids=['AN6791.2', 'AN6000.2'])
 
         Parameters
         ----------
@@ -129,9 +177,23 @@ class CDSearch:
     def check_status(self, cdsid):
         """Check the status of a running CD-search job.
 
+        CD-Search runs are assigned a unique search ID, which typically take the form:
+        ::
+            QM3-qcdsearch-xxxxxxxxxxx-yyyyyyyyyyy
+
+        This function queries NCBI for the status of a running CD-Search job
+        corresponding to the search ID specified by `cdsid`.
+
+        >>> response = cd.check_status('QM3-qcdsearch-B4BAD4B59BC5B80-3E7CFCD3F93E21D0')
+
+        If the job has finished, this function will return the requests.Response object
+        which contains the run results. If the job is still running, this function will
+        return None. If an error is encountered, a ValueError will be thrown with the
+        corresponding error code and message.
+
         Parameters
         ----------
-        cdsid : int
+        cdsid : str
             CD-search job ID.
 
         Returns
@@ -145,7 +207,8 @@ class CDSearch:
 
         Raises
         ------
-        ValueError when a status code of 1, 2, 4 or 5 is returned from the request.
+        ValueError
+            When a status code of 1, 2, 4 or 5 is returned from the request.
         """
         response = requests.get(self.base_url, params={"cdsid": cdsid})
         code = re.search(r"#status\t([012345])[\n\t]", response.text).group(1)
@@ -164,6 +227,32 @@ class CDSearch:
     def retrieve_results(self, cdsid, output=None, check_interval=10, max_retries=20):
         """Retrieve the results of a CD-search job.
 
+        This method queries NCBI for results from a CDSearch job corresponding to the
+        supplied `cdsid`. Checks will be run in second intervals specified by
+        `check_interval` until either a completed response is returned or the retry
+        limit specified by `max_retries` is reached.
+
+        If you wish to save the results of a CD-Search run to file, you can supply an
+        open file handle via the `output` parameter:
+
+        >>> cd = CDSearch()
+        >>> with open('results.tsv', 'w') as results:
+        ...     cd.retrieve_results(
+        ...         'QM3-qcdsearch-B4BAD4B59BC5B80-3E7CFCD3F93E21D0',
+        ...         output=results
+        ...     )
+
+        This function returns the Response object returned by CDSearch.check_status():
+
+        >>> cd = CDSearch()
+        >>> response = cd.retrieve_results('QM3-qcdsearch-B4BAD4B59BC5B80-3E7CFCD3F93E21D0')
+        >>> print(response.text)
+        #Batch CD-search tool	NIH/NLM/NCBI
+        #cdsid	QM3-qcdsearch-B4BAD4B59BC5B80-3E7CFCD3F93E21D0
+        #datatype	hitsFull Results
+        #status	0
+        ...
+
         Parameters
         ----------
         cdsid : str
@@ -179,6 +268,11 @@ class CDSearch:
 
         max_retries : int
             Maximum number of retries for checking job completion.
+
+        Returns
+        -------
+        response : requests.Response
+            Response object returned by the requests.get() in CDSearch.check_status().
 
         Raises
         -------
@@ -216,15 +310,23 @@ class CDSearch:
     ):
         """Convenience function to start a new batch CD-search job and retrieve results.
 
+        This function first launches a new CD-Search run via CDSearch.new_search(), then
+        attempts to retrieve the results from the resulting `cdsid` via
+        CDSearch.retrieve_results().
+
         Refer to self.new_search() and self.retrieve_results() for full description of
         parameters.
+
+        >>> cd = CDSearch()
+        >>> with open('results.tsv', 'w') as results:
+        ...     response = cd.run(query_ids=['AN6791.2', 'AN6000.2'], output=results)
         """
         log.info("Starting new CD-search")
         cdsid = self.new_search(query_file=query_file, query_ids=query_ids)
 
         log.info("Retrieving results")
         log.debug(cdsid)
-        self.retrieve_results(
+        return self.retrieve_results(
             cdsid,
             check_interval=check_interval,
             max_retries=max_retries,

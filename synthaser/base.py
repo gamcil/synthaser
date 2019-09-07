@@ -70,7 +70,7 @@ class Synthase:
     """The Synthase class stores a query protein sequence, its hit domains, and the
     methods for generating its SVG representation.
 
-    Attributes
+    Parameters
     ----------
     header : str
         Name of this Synthase. This must be equal to what is used in NCBI CD-search.
@@ -143,6 +143,7 @@ class Synthase:
     @property
     def architecture(self):
         """Return the domain architecture of this synthase as a hyphen separated string.
+
         Also performs any final type-specific cleanup (e.g. NRPS ACP domain -> T).
         """
         if self.type != "PKS":
@@ -162,16 +163,29 @@ class Synthase:
 
     @property
     def gradient(self):
-        """Create a coloured gradient based on domain architecture.
+        """Create a linearGradient SVG element based on this objects domain architecture.
 
-        Add first stop in the gradient; gap from start of protein
-        to the first domain
+        For example, if we define a Synthase object as follows:
 
-        Get start and end as percentages of whole
+        >>> synthase = Synthase(
+        ...     header='synthase',
+        ...     sequence='ACGACG...',  # length 100
+        ...     domains=[Domain(type='KS', start=50, end=100)],
+        ... )
 
-        Create gradient stops. Have to do two stops per coordinate
-        (white/colour at start, then colour/white at end), so these
-        will be drawn as hard edges rather than actual gradients
+        The generated gradient will be:
+
+        >>> print(synthase.gradient)
+        <linearGradient id="synthase_doms" x1="0%" y1="0%" x2="100%" y2="0%">
+        <stop offset="50%" stop-color="white"/>
+        <stop offset="50%" stop-color="#08B208"/>
+        <stop offset="100%" stop-color="#08B208"/>
+        <stop offset="100%" stop-color="white"/>
+        </linearGradient>
+
+        Note that a generated linearGradient will have 4 stops for every Domain object
+        in the ``domains`` attribute; this ensures that each Domain colour has a hard
+        edge instead of blending into the next Domain.
         """
         if not self.sequence:
             raise ValueError("Synthase has no sequence")
@@ -201,18 +215,43 @@ class Synthase:
 
         Length is determined by the supplied scale factor. Then, pairs of X and Y coordinates
         are calculated to represent each point in the synthase arrow. Finally, an SVG
-        polygon feature is built with extra information above in a text feature, e.g.:
+        polygon feature is built with extra information above in a text feature, e.g.
 
-            Header, 1000aa, A-B-C-D-E
+        ::
+
+            synthase, 100aa, KS-AT
             A----------B
-            |           \
+            |           \\
             |            C
             |           /
             E----------D
 
+
+        For example, if we define a Synthase object as follows:
+
+        >>> synthase = Synthase(
+        ...     header='synthase',
+        ...     sequence='ACGACG...',  # length 100
+        ...     domains=[Domain(type='KS', start=50, end=100)],
+        ... )
+
+        The generated polygon will be:
+
+        >>> polygon = synthase.polygon()
+        >>> print(polygon)
+        <text dominant-baseline="hanging" font-size="12">synthase, 100aa, KS</text>'
+        <polygon
+            id="synthase" points="0,10.8,90,10.8,100,17.8,90,24.8,0,24.8"
+            fill="url(#synthase_doms)" stroke="black" stroke-width="1.5"
+        />
+
+        Note that the ``fill`` attribute takes the form ``header``_doms; this is the id
+        of the gradient for this Synthase.
+
         Parameters
         ----------
         scale_factor : int
+            Scaling factor to multiply the Synthase sequence length by.
 
         Returns
         -------
@@ -271,6 +310,17 @@ class Domain:
     def from_cdsearch_row(cls, row):
         """Instantiate a new Domain from a row in a CD-search results file.
 
+        For example, a typical row might looks like:
+
+        >>> print(row)
+        Q#1 - >AN6791.2\tspecific\t225858\t9\t1134\t0\t696.51\tCOG3321\tPksD\t - \tcl09938
+
+        We can then instantiate a Domain object from this row, like so:
+
+        >>> domain = Domain.from_cdsearch_row(row)
+        >>> domain
+        'PksD [KS] 9-1134'
+
         Parameters
         ----------
         row : str
@@ -294,7 +344,17 @@ class Domain:
         return sequence[self.start - 1 : self.end]
 
     def to_dict(self):
-        """Serialise this object to dict of its attributes."""
+        """Serialise this object to dict of its attributes.
+
+        For example, if we define a Domain:
+
+        >>> domain = Domain(type='KS', domain='PksD', start=9, end=1143)
+
+        We can serialise it to a Python dictionary:
+
+        >>> domain.to_dict()
+        {"type": "KS", "domain": "PksD", "start": 9, "end": 1143}
+        """
         return {
             "type": self.type,
             "domain": self.domain,
