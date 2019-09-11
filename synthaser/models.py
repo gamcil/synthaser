@@ -71,9 +71,7 @@ class Synthase:
         The acyl carrier protein (ACP) domain in PKSs is homologous to the thioester
         domain of the peptide carrier protein (PCP) domain in NRPSs, and as such, both
         PKS and NRPS will report the same conserved domain hit. In NRPS, it is
-        convention to name these T, i.e.
-
-        ::
+        convention to name these T, i.e.::
 
             A-ACP-C --> A-T-C
 
@@ -81,9 +79,7 @@ class Synthase:
         Thus, this function looks for a condensation (C) domain that typically signals
         the beginning of such a module, and replaces any ACP with T after that domain.
 
-        An example PKS-NRPS domain architecture may resemble:
-
-        ::
+        An example PKS-NRPS domain architecture may resemble::
 
             KS-AT-DH-ER-KR-ACP-C-A-T-R
 
@@ -169,7 +165,22 @@ class Domain:
         raise NotImplementedError
 
     def slice(self, sequence):
-        """Slice segment of sequence using the position of this Domain."""
+        """Slice segment of sequence using the position of this Domain.
+
+        Given a Domain:
+
+        >>> domain = Domain(type='KS', subtype='PKS_KS', start=10, end=20)
+
+        And its corresponding Synthase sequence:
+
+        >>> synthase.sequence
+        'ACGTACGTACACGTACGTACACGTACGTAC'
+
+        We can extract the Domain:
+
+        >>> domain.slice(synthase.sequence)
+        'CGTACGTACA'
+        """
         return sequence[self.start - 1 : self.end]
 
     def to_dict(self):
