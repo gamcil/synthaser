@@ -1,3 +1,5 @@
 #!usr/bin/env python3
 
-from .cdsearch import CDSearch
+from synthaser.models import Domain, Synthase
+from synthaser.figure import Figure
+from synthaser.results import ResultParser
