@@ -74,6 +74,7 @@ class Synthase:
         convention to name these T, i.e.
 
         ::
+
             A-ACP-C --> A-T-C
 
         In hybrid PKS-NRPS, this replacement is made in the NRPS module of the synthase.
@@ -83,6 +84,7 @@ class Synthase:
         An example PKS-NRPS domain architecture may resemble:
 
         ::
+
             KS-AT-DH-ER-KR-ACP-C-A-T-R
 
         Lastly, thioester reductase (TR) domains are generally written as R in NRPS,
