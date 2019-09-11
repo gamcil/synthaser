@@ -1,16 +1,12 @@
 #!/usr/bin/env python3
 
 """
-Test suite for cdsearch.py
-
-Cameron Gilchrist
+Unit tests for cdsearch.py
 """
 
 from pathlib import Path
 
-import json
 import pytest
-
 import requests_mock
 
 from synthaser.cdsearch import CDSearch
@@ -25,7 +21,7 @@ def cdsearch():
 
 
 @pytest.fixture
-def config():
+def parameters():
     return {
         "db": "pfam",
         "smode": "prec",
@@ -37,68 +33,38 @@ def config():
     }
 
 
-def make_tmp_config(tmp_path, config_dict):
-    d = tmp_path / "sub"
-    d.mkdir()
-    p = d / "config.json"
-    p.write_text(json.dumps(config_dict))
-    return p
-
-
-def test_default_CDSearch_init(cdsearch):
-    assert cdsearch.config == {
-        "db": "cdd",
-        "smode": "auto",
-        "useid1": "true",
-        "compbasedadj": "0",
-        "filter": "false",
-        "evalue": "0.01",
-        "maxhit": "500",
-        "dmode": "full",
-        "tdata": "hits",
-    }
-
-
-def test_CDSearch_load_config(tmp_path, config, cdsearch):
-    default_config = cdsearch.config.copy()
-
-    cdsearch.load_config()
-    assert cdsearch.config == default_config
-
-    with pytest.raises(FileNotFoundError):
-        cdsearch.load_config("fake_path")
-
-    test_config = make_tmp_config(tmp_path, config)
-    cdsearch.load_config(test_config)
-
-    config["dmode"] = "full"
-    config["tdata"] = "hits"
-    assert cdsearch.config == config
-
-
-def test_CDSearch_configure(cdsearch):
-    invalid = {"id": 1}
+def test_CDSearch_set_search_parameters_invalid(cdsearch):
     with pytest.raises(ValueError):
-        cdsearch.configure(invalid)
+        cdsearch.set_search_parameters({"id": 1})
 
-    reserved = {"dmode": 1}
+
+def test_CDSearch_set_search_parameters_reserved(cdsearch):
     with pytest.raises(ValueError):
-        cdsearch.configure(reserved)
+        cdsearch.set_search_parameters({"dmode": 1})
+
+
+def test_CDSearch_set_search_parameters(cdsearch, parameters):
+    assert cdsearch.parameters != parameters
+    cdsearch.set_search_parameters(parameters)
+    parameters.update({"dmode": "full", "tdata": "hits"})
+    assert cdsearch.parameters == parameters
+
+
+@pytest.mark.parametrize(
+    "params,exception",
+    [
+        ({}, ValueError),
+        ({"query_file": "doesnt_exist"}, FileNotFoundError),
+        ({"query_ids": "not a list or tuple"}, TypeError),
+        ({"query_ids": [["not a list/tuple of int/str"]]}, TypeError),
+    ],
+)
+def test_CDSearch_new_search_input_exceptions(cdsearch, params, exception):
+    with pytest.raises(exception):
+        cdsearch.new_search(**params)
 
 
 def test_CDSearch_new_search(cdsearch):
-    with pytest.raises(ValueError):
-        cdsearch.new_search()
-
-    with pytest.raises(FileNotFoundError):
-        cdsearch.new_search(query_file="test_query")
-
-    with pytest.raises(ValueError):
-        cdsearch.new_search(query_ids="not a list or tuple")
-
-    with pytest.raises(ValueError):
-        cdsearch.new_search(query_ids=[["not a list/tuple of int/str"]])
-
     query_ids = ["AN6791.2", "AN6000.2", "AN6431.2"]
     query_file = TEST_DIR / "anid.faa"
 
@@ -119,6 +85,22 @@ def test_CDSearch_new_search(cdsearch):
         assert cdsearch.new_search(query_file=query_file) == cdsid
 
 
+def test_CDSearch_check_status_empty_file(cdsearch):
+    cdsid = "QM3-qcdsearch-5C11C54FC403F91-E792C9BEE9818D8"
+    text = (
+        "#Batch CD-search tool\tNIH/NLM/NCBI\n#cdsid\t"
+        "QM3-qcdsearch-5C11C54FC403F91-E792C9BEE9818D8\n"
+        "#datatype\thitsFull Results\n#status\t0\n"
+        "#Start time\t2019-09-03T04:21:23\tRun time\t0:00:04:23\n"
+        "#status\tsuccess\n\n"
+        "Query\tHit type\tPSSM-ID\tFrom\tTo\tE-Value\tBitscore"
+        "\tAccession\tShort\tname\tIncomplete\tSuperfamily\n"
+    )
+    with requests_mock.Mocker() as m, pytest.raises(ValueError):
+        m.get(cdsearch.ncbi, text=text)
+        cdsearch.check_status(cdsid)
+
+
 def test_CDSearch_check_status(cdsearch):
     # mock responses
     # test 0 -> returns response, 3 -> returns None, ValueError otherwise
@@ -130,47 +112,45 @@ def test_CDSearch_check_status(cdsearch):
     )
     with requests_mock.Mocker() as m:
         # Returns Response if job has completed
-        m.get(cdsearch.base_url, text=text.format("0"))
+        m.get(cdsearch.ncbi, text=text.format("0"))
         response = cdsearch.check_status(cdsid)
         assert response is not None
 
         # Returns None if job is still running
-        m.get(cdsearch.base_url, text=text.format("3"))
+        m.get(cdsearch.ncbi, text=text.format("3"))
         response = cdsearch.check_status(cdsid)
         assert response is None
 
         # Raises ValueError if something went wrong with the search
         with pytest.raises(ValueError):
-            m.get(cdsearch.base_url, text=text.format("1"))
+            m.get(cdsearch.ncbi, text=text.format("1"))
             response = cdsearch.check_status(cdsid)
 
 
 def test_CDSearch_retrieve_results(cdsearch, tmp_path):
     cdsid = "QM3-qcdsearch-B4BAD4B59BC5B80-3E7CFCD3F93E21D0"
-
     text = (
         "#Batch CD-search tool\tNIH/NLM/NCBI\n#cdsid\t"
         "QM3-qcdsearch-5C11C54FC403F91-E792C9BEE9818D8\n"
         "#datatype\thitsFull Results\n#status\t{}\tmsg\tJob is still running\n'"
     )
-
     with requests_mock.Mocker() as m:
         # Case when bad status code received, raises ValueError
-        m.get(cdsearch.base_url, text=text.format("1"))
+        m.get(cdsearch.ncbi, text=text.format("1"))
         with pytest.raises(ValueError):
             response = cdsearch.retrieve_results(cdsid)
 
-        # Case when status is 3 (still running), returns None, loop ends
-        m.get(cdsearch.base_url, text=text.format("3"))
+        # Case when status is 3 (still running), loop ends but no response
+        m.get(cdsearch.ncbi, text=text.format("3"))
         with pytest.raises(ValueError):
-            response = cdsearch.retrieve_results(cdsid, check_interval=0, max_retries=1)
+            response = cdsearch.retrieve_results(cdsid, delay=0, max_retries=1)
 
     anid_tsv = TEST_DIR / "anid.tsv"
     with anid_tsv.open() as anid:
         text = anid.read()
 
     with requests_mock.Mocker() as m:
-        m.get(cdsearch.base_url, text=text)
+        m.get(cdsearch.ncbi, text=text)
         results = tmp_path / "results"
 
         # Successful run, test save to file handle
@@ -181,3 +161,18 @@ def test_CDSearch_retrieve_results(cdsearch, tmp_path):
 
         with results.open() as res:
             assert res.read() == text
+
+
+def test_CDSearch_retrieve_results_no_response(cdsearch, monkeypatch):
+    def no_response(cdsid):
+        return None
+
+    monkeypatch.setattr(cdsearch, "check_status", no_response)
+
+    with pytest.raises(ValueError):
+        cdsearch.retrieve_results("test", delay=0, max_retries=1)
+
+
+def test_CDSearch_retrieve_results_input(cdsearch):
+    with pytest.raises(ValueError):
+        cdsearch.retrieve_results("test", delay=5)
