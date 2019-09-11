@@ -6,5 +6,7 @@ Contents:
 .. toctree::
     :maxdepth: 2
 
-    synthaser
+    models
+    figure
     cdsearch
+    results
