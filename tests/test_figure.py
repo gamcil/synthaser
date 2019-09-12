@@ -8,16 +8,10 @@ from pathlib import Path
 
 import pytest
 
-from synthaser.figure import Figure, wrap_fasta, _validate_colour
+from synthaser.figure import Figure, _validate_colour
 from synthaser.models import Synthase, Domain
 
 TEST_DIR = Path(__file__).resolve().parent
-
-
-def test_wrap_fasta():
-    sequence = "GAGAACGTCGACGTCGATCGATCTAGCTGACAGCTAGCTA"
-    wrapped = wrap_fasta(sequence, limit=10)
-    assert wrapped == "GAGAACGTCG\nACGTCGATCG\nATCTAGCTGA\nCAGCTAGCTA"
 
 
 @pytest.mark.parametrize(

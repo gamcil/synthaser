@@ -15,6 +15,9 @@ from synthaser.models import (
     assign_subtype,
     hits_overlap,
     group_overlapping_hits,
+    create_fasta,
+    wrap_fasta,
+    extract_all_domains,
 )
 
 
@@ -218,3 +221,34 @@ def test_Synthase_rename_nrps_domains(synthase):
 
 def test_Synthase_architecture(synthase):
     assert synthase.architecture == "KS-AT"
+
+
+def test_extract_all_domains():
+    one = Synthase(
+        header="one", sequence="AAAAABBBBB", domains=[Domain(type="KS", start=1, end=5)]
+    )
+    two = Synthase(
+        header="two",
+        sequence="BBBBBAAAAA",
+        domains=[Domain(type="KS", start=6, end=10)],
+    )
+    assert extract_all_domains([one, two]) == {
+        "KS": [("one_KS_0", "AAAAA"), ("two_KS_0", "AAAAA")]
+    }
+
+
+def test_wrap_fasta():
+    sequence = "GAGAACGTCGACGTCGATCGATCTAGCTGACAGCTAGCTA"
+    wrapped = wrap_fasta(sequence, limit=10)
+    assert wrapped == "GAGAACGTCG\nACGTCGATCG\nATCTAGCTGA\nCAGCTAGCTA"
+
+
+@pytest.mark.parametrize(
+    "header,sequence,wrap,result",
+    [
+        ("header", "AAAAABBBBBCCCCC", 5, ">header\nAAAAA\nBBBBB\nCCCCC"),
+        (12345, "AAAAABBBBBCCCCC", 10, ">12345\nAAAAABBBBB\nCCCCC"),
+    ],
+)
+def test_create_fasta(header, sequence, wrap, result):
+    assert create_fasta(header, sequence, wrap=wrap) == result
