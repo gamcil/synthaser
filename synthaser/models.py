@@ -59,7 +59,7 @@ class Synthase:
     def classify(self):
         """Assign a type and subtype to this Synthase.
 
-        Refer to ``assign_type`` and ``assign_subtype`` for description of
+        Refer to `assign_type` and `assign_subtype` for description of
         classification rules.
         """
         domains = self.domain_types
@@ -125,9 +125,9 @@ class Synthase:
         Raises
         ------
         ValueError
-            If the ``Synthase`` has no ``Domain`` objects.
+            If the `Synthase` has no `Domain` objects.
         ValueError
-            If the ``sequence`` attribute is empty.
+            If the `sequence` attribute is empty.
         """
         if not self.domains:
             raise ValueError("Synthase has no domains")
@@ -255,10 +255,10 @@ class Domain:
 def assign_type(domains):
     """Determine the broad biosynthetic type of a Synthase.
 
-    Classification rules
-    --------------------
+    Synthases are assigned types based on the following rules:
+
     Hybrid (PKS-NRPS):
-        Both a beta-ketoacyl synthase (KS) and adenylation (A) domains
+        Both beta-ketoacyl synthase (KS) and adenylation (A) domains
     Polyketide synthase (PKS):
         KS domain
     Nonribosomal peptide synthase (NRPS):
@@ -404,3 +404,96 @@ def group_overlapping_hits(domains, threshold=0.9):
             if j == total - 1:  # if reached the end, yield
                 yield group
         i += len(group)  # move index ahead of last group
+
+
+def wrap_fasta(sequence, limit=80):
+    """Wrap FASTA record to 80 characters per line.
+
+    Parameters
+    ----------
+    sequence : str
+        Sequence to be wrapped.
+
+    limit : int
+        Total characters per line.
+
+    Returns
+    -------
+    str
+        Sequence wrapped to maximum `limit` characters per line.
+    """
+    return "\n".join(sequence[i : i + limit] for i in range(0, len(sequence), limit))
+
+
+def create_fasta(header, sequence, wrap=80):
+    """Create a FASTA format string from a header and sequence.
+
+    For example:
+
+    >>> create_fasta('header', 'AAAAABBBBBCCCCC', wrap=5)
+    '>header\\nAAAAA\\nBBBBB\\nCCCCC'
+
+    Parameters
+    ----------
+    header : str
+        Name to use in FASTA definition line (i.e. >header).
+    sequence : str
+        The sequence corresponding to the `header`.
+    wrap : int
+        The number of characters per line for wrapping the given `sequence`.
+        This function will call `wrap_fasta`.
+
+    Returns
+    -------
+    str
+        FASTA format string.
+    """
+    return ">{}\n{}".format(header, wrap_fasta(sequence, limit=wrap))
+
+
+def extract_all_domains(synthases):
+    """Extract all domain sequences in a list of `Synthase` objects.
+
+    For example, given a list of `Synthase` objects:
+
+    >>> synthases = [Synthase(header='one', ...), Synthase(header='two', ...)]
+
+    Then, the output of this function may resemble:
+
+    >>> domains = extract_all_domains(synthases)
+    >>> domains
+    {'KS': [('one_KS_1', 'IAIA...'), ('two_KS_1', 'IAIE...')], 'AT': [...]}
+
+    We can easily write these to file in FASTA format. For example, to write all KS
+    domain sequences to file, we open a file handle for writing and build a multiFASTA
+    using `create_fasta`:
+
+    >>> with open('output.faa', 'w') as out:
+    ...     multifasta = '\\n'.join(
+    ...         create_fasta(header, sequence)
+    ...         for header, sequence in domains['KS'].items()
+    ...     )
+    ...     out.write(multifasta)
+
+    Parameters
+    ----------
+    synthases : list
+        A list of `Synthase` objects with non-empty `sequence` and `domains`
+        attributes.
+
+    Returns
+    -------
+    combined : dict
+        Dictionary of extracted domain sequences keyed on domain type. Each domain is
+        represented by a tuple consisting of a unique header, in the format
+        `Synthase.header_Domain.type_index` where `index` is the index of that
+        Domain in the Synthase, and the extracted sequence.
+    """
+    combined = defaultdict(list)
+    for synthase in synthases:
+        for type, sequences in synthase.extract_domains().items():
+            combined[type].extend(
+                (f"{synthase.header}_{type}_{i}", sequence)
+                for i, sequence in enumerate(sequences)
+            )
+    return dict(combined)

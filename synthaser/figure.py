@@ -78,7 +78,7 @@ class Figure:
 
         Valid domain types are:
 
-        ``ACP, KS, SAT, KR, MT, ER, AT, DH, PT, TE, TR, T, R, C, A``
+        `ACP, KS, SAT, KR, MT, ER, AT, DH, PT, TE, TR, T, R, C, A`
 
         Thus, a valid dictionary might look like:
 
@@ -97,11 +97,11 @@ class Figure:
         Raises
         ------
         TypeError
-            If ``colours`` is not a dictionary.
+            If `colours` is not a dictionary.
         KeyError
-            If a key in ``colours`` is not a valid domain type.
+            If a key in `colours` is not a valid domain type.
         ValueError
-            If a value in ``colours`` is not a valid hex code.
+            If a value in `colours` is not a valid hex code.
         """
         if not isinstance(colours, dict):
             raise TypeError("Expected dict")
@@ -117,7 +117,7 @@ class Figure:
         """Calculate the scale factor for drawing synthases.
 
         The scale factor is calculated such that the largest Synthase in the Figure will
-        match the value of ``width``.
+        match the value of `width`.
 
         For example, given two Synthases:
 
@@ -125,13 +125,13 @@ class Figure:
         >>> b = Synthase(sequence='ACGT...')  # sequence_length == 1000
 
         We can instantiate a Figure and compute the scaling factor for a document of
-        ``width`` 1000:
+        `width` 1000:
 
         >>> figure = Figure(synthases=[a, b])
         >>> figure.scale_factor(1000)
         0.499
 
-        i.e. The larger Synthase with ``sequence_length`` 2000 is multipled by 0.499 to
+        i.e. The larger Synthase with `sequence_length` 2000 is multipled by 0.499 to
         scale it to the width of the Figure.
 
         Note that the scaling factor is calculated with a slight offset (2) to account
@@ -151,9 +151,9 @@ class Figure:
         Raises
         ------
         ValueError
-            If the Synthase objects in this object have empty ``sequence`` attributes.
+            If the Synthase objects in this object have empty `sequence` attributes.
         ValueError
-            If ``width`` is a negative number.
+            If `width` is a negative number.
         """
         if any(not synthase.sequence for synthase in self.synthases):
             raise ValueError("Synthases in this Figure have no sequences")
@@ -213,17 +213,17 @@ class Figure:
         </linearGradient>
 
         Note that a generated linearGradient will have 4 stops for every Domain object
-        in the ``domains`` attribute; this ensures that each Domain colour has a hard
+        in the `domains` attribute; this ensures that each Domain colour has a hard
         edge instead of blending into the next Domain.
 
-        Also note that the ``id`` parameter of the generated linearGradient takes the
-        form ``header_doms``. This allows the Synthase polygon ``fill`` attribute to
+        Also note that the `id` parameter of the generated linearGradient takes the
+        form `header_doms`. This allows the Synthase polygon `fill` attribute to
         reference this linearGradient.
 
         Parameters
         ----------
         synthase : Synthase
-            A Synthase oject. Must have a non-empty ``sequence`` attribute, as this is
+            A Synthase oject. Must have a non-empty `sequence` attribute, as this is
             used to calculate the relative positioning of each domain.
 
         Returns
@@ -235,7 +235,7 @@ class Figure:
         Raises
         ------
         ValueError
-            If the supplied ``synthase`` has an empty ``sequence`` attribute.
+            If the supplied `synthase` has an empty `sequence` attribute.
         """
         if not synthase.sequence:
             raise ValueError("Synthase has no sequence")
@@ -296,13 +296,13 @@ class Figure:
             fill="url(#synthase_doms)" stroke="black" stroke-width="1.5"
         />
 
-        Note that the ``fill`` attribute takes the form ``header_doms``; this is the id
+        Note that the `fill` attribute takes the form `header_doms`; this is the id
         of the linearGradient for this Synthase.
 
         Parameters
         ----------
         synthase : Synthase
-            A Synthase oject. Must have a non-empty ``sequence`` attribute, as this is
+            A Synthase oject. Must have a non-empty `sequence` attribute, as this is
             used to calculate the coordinates in the polygon.
 
         scale_factor : int
@@ -318,7 +318,7 @@ class Figure:
         Raises
         ------
         ValueError
-            If the supplied ``synthase`` has an empty ``sequence`` attribute.
+            If the supplied `synthase` has an empty `sequence` attribute.
         """
         if not synthase.sequence:
             raise ValueError("Synthase has no sequence")
@@ -471,14 +471,16 @@ class Figure:
     def from_cdsearch(cls, query_file, result_file=None, **kwargs):
         """Convenience function to directly instantiate a Figure from a new CDSearch job.
 
-        All additional keyword arguments are passed to ``CDSearch.run()``.
+        All additional keyword arguments are passed to `CDSearch.search()`.
+
+        If `result_file` is specified, this function will skip straight to parsing it.
 
         Parameters
         ----------
         query_file : str
             Path to a FASTA file containing query sequences to be analysed.
         result_file: str, optional
-            Path to a CD-Search results file corresponding to ``query_file``.
+            Path to a CD-Search results file corresponding to `query_file`.
 
         Returns
         -------
@@ -527,22 +529,3 @@ def _validate_colour(colour):
     if hex_regex.search(colour):
         return True
     return False
-
-
-def wrap_fasta(sequence, limit=80):
-    """Wrap FASTA record to 80 characters per line.
-
-    Parameters
-    ----------
-    sequence : str
-        Sequence to be wrapped.
-
-    limit : int
-        Total characters per line.
-
-    Returns
-    -------
-    str
-        Sequence wrapped to maximum `limit` characters per line.
-    """
-    return "\n".join(sequence[i : i + limit] for i in range(0, len(sequence), limit))

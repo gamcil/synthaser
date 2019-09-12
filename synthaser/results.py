@@ -9,13 +9,11 @@ from synthaser.models import Domain, Synthase
 class ResultParser:
     """The ResultParser class handles the parsing and filtering of CDSearch results.
 
-    Basic Usage
-    -----------
-    First, instantiate a ``ResultParser`` object:
+    First, instantiate a `ResultParser` object:
 
     >>> rp = ResultParser()
 
-    Then, pass an open results file handle to ``ResultParser.parse_results()``:
+    Then, pass an open results file handle to `ResultParser.parse_results()`:
 
     >>> with open('results.tsv') as handle:
     ...     figure = rp.parse_results(results)
@@ -30,14 +28,14 @@ class ResultParser:
     ...
 
     These can then be used to directly instantiate Domain and Synthase objects using
-    their ``from_dict()`` methods.
+    their `from_dict()` methods.
 
     Parameters
     ----------
     domains : dict
         Dictionary mapping actual domain names from the conserved domain database (CDD)
         to their broader biosynthetic type. This can be altered through the method
-        ``set_domains`` to add more categories or domains.
+        `set_domains` to add more categories or domains.
     """
 
     default_domains = {
@@ -78,16 +76,16 @@ class ResultParser:
         ----------
         domains : dict
             Dictionary of conserved domain names keyed on domain type. Valid keys are
-            those in ``ResultParser.domains``; if a provided key is not in this set, a
+            those in `ResultParser.domains`; if a provided key is not in this set, a
             ValueError is thrown. Values should be tuples or lists of str corresponding
             to names of conserved domains in the CDD.
 
         Raises
         ------
         TypeError
-            If ``domains`` is not of type ``dict``.
+            If `domains` is not of type `dict`.
         ValueError
-            If a domain type is specified that is not in ``ResultParser.domains``.
+            If a domain type is specified that is not in `ResultParser.domains`.
         TypeError
             If dictionary values are not lists or tuples.
         TypeError
@@ -148,11 +146,11 @@ class ResultParser:
         results_handle: open file handle
             An open CD-Search results file handle. If you used the website to analyse your
             sequences, the file you should download is Domain hits, Data mode: Full, ASN
-            text. When using a ``CDSearch`` object, this format is automatically selected.
+            text. When using a `CDSearch` object, this format is automatically selected.
 
         query_handle: open file handle, optional
             An open file handle for the sequences used in the CD-search run. Sequences
-            can be added later via ``Figure.add_query_sequences()``.
+            can be added later via `Figure.add_query_sequences()`.
 
         Returns
         -------
@@ -206,7 +204,7 @@ class ResultParser:
 def parse_fasta(fasta):
     """Parse an open FASTA file for sequences.
 
-    For example, given a FASTA file ``fasta.faa`` containing:
+    For example, given a FASTA file `fasta.faa` containing:
 
     ::
         >sequence
@@ -246,7 +244,7 @@ def parse_fasta(fasta):
 def parse_results(results_file):
     """Parse a results file at a specified path.
 
-    Instantiates a ResultParser object and returns the output of its ``parse()`` method.
+    Instantiates a ResultParser object and returns the output of its `parse()` method.
     """
     rp = ResultParser()
     with open(results_file) as results:
