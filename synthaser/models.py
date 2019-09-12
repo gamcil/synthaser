@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 
+from collections import defaultdict
 from operator import attrgetter
 import json
 
@@ -88,17 +89,54 @@ class Synthase:
         """
         if not self.type or self.type == "PKS":
             return
-
         start, replace = 0, {"ACP": "T", "TR": "R"}
-
         if self.type == "Hybrid":
             for start, domain in enumerate(self.domains):
                 if domain.type == "C":
                     break
-
         for domain in self.domains[start:]:
             if domain.type in replace:
                 domain.type = replace[domain.type]
+
+    def extract_domains(self):
+        """Extract all domains in this synthase.
+
+        For example, given a Synthase:
+
+        >>> synthase = Synthase(
+        ...     header='synthase',
+        ...     sequence='ACGT...',  # length 100
+        ...     domains=[
+        ...         Domain(type='KS', domain='PKS_KS', start=1, end=20),
+        ...         Domain(type='AT', domain='PKS_AT', start=50, end=70)
+        ...     ]
+        ... )
+
+        Then, we can call this function to extract the domain sequences:
+
+        >>> synthase.extract_domains()
+        {'KS':['ACGT...'], 'AT':['ACGT...']}
+
+        Returns
+        -------
+        dict
+            Sliced sequences for each domain in this synthase, keyed on domain type.
+
+        Raises
+        ------
+        ValueError
+            If the ``Synthase`` has no ``Domain`` objects.
+        ValueError
+            If the ``sequence`` attribute is empty.
+        """
+        if not self.domains:
+            raise ValueError("Synthase has no domains")
+        if not self.sequence:
+            raise ValueError("Synthase has no sequence")
+        domains = defaultdict(list)
+        for domain in self.domains:
+            domains[domain.type].append(domain.slice(self.sequence))
+        return dict(domains)
 
     def to_dict(self):
         return {

@@ -100,7 +100,7 @@ def test_Domain_serialisation(tmp_path):
 @pytest.fixture
 def domains():
     return [
-        Domain(start=0, end=90, type="KS", domain="PKS_KS"),
+        Domain(start=1, end=90, type="KS", domain="PKS_KS"),
         Domain(start=10, end=80, type="KS", domain="PKS"),
         Domain(start=100, end=200, type="AT", domain="PKS_AT"),
         Domain(start=130, end=190, type="AT", domain="Acyl_transf_1"),
@@ -117,7 +117,7 @@ def synthase(domains):
 
 
 def test_domain_repr(domains):
-    assert repr(domains[0]) == "PKS_KS [KS] 0-90"
+    assert repr(domains[0]) == "PKS_KS [KS] 1-90"
 
 
 def test_domain_eq(domains):
@@ -148,7 +148,7 @@ def test_Synthase_serialisation(synthase, domains, tmp_path):
         "header": "test",
         "sequence": "A" * 200,
         "domains": [
-            {"start": 0, "end": 90, "type": "KS", "domain": "PKS_KS"},
+            {"start": 1, "end": 90, "type": "KS", "domain": "PKS_KS"},
             {"start": 100, "end": 200, "type": "AT", "domain": "PKS_AT"},
         ],
         "type": "PKS",
@@ -168,6 +168,23 @@ def test_Synthase_serialisation(synthase, domains, tmp_path):
     assert from_json.domains == [domains[0], domains[2]]
     assert from_json.type == "PKS"
     assert from_json.subtype == "NR-PKS"
+
+
+def test_Synthase_extract_domains(synthase, domains):
+    with pytest.raises(ValueError):
+        synthase.domains = []
+        synthase.extract_domains()
+
+    synthase.sequence = "A" * 10 + "B" * 70 + "C" * 10 + "D" * 110
+    synthase.domains = domains[:3]
+    assert synthase.extract_domains() == {
+        "KS": ["A" * 10 + "B" * 70 + "C" * 10, "A" + "B" * 70],
+        "AT": ["D" * 101],
+    }
+
+    with pytest.raises(ValueError):
+        synthase.sequence = ""
+        synthase.extract_domains()
 
 
 def test_Synthase_filter_overlapping_domains(domains, synthase):
