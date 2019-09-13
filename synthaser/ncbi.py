@@ -7,6 +7,7 @@ import re
 
 import requests
 
+from synthaser.results import parse_fasta
 
 logging.basicConfig(level=logging.INFO)
 log = logging.getLogger(__name__)
@@ -320,7 +321,39 @@ class CDSearch:
         ...     response = cd.search(query_ids=['AN6791.2', 'AN6000.2'], output=results)
         """
         cdsid = self.new_search(query_file=query_file, query_ids=query_ids)
-
         return self.retrieve_results(
             cdsid, delay=delay, max_retries=max_retries, output=output
         )
+
+
+def efetch_sequences(headers):
+    """Retrieve protein sequences from NCBI for supplied accessions.
+
+    This function uses EFetch from the NCBI E-utilities to retrieve the sequences for
+    all synthases specified in `headers`. It then calls `parse_fasta` to parse the
+    returned response; note that extra processing has to occur because the returned
+    FASTA will contain a full sequence description in the header line after the
+    accession.
+
+    Parameters
+    ----------
+    headers : list, tuple
+        A list of valid NCBI sequence identifiers (accession, GI, etc). Should
+        correspond to an entry in the Protein database.
+    """
+    response = requests.get(
+        "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi?",
+        params={"db": "protein", "id": ",".join(headers), "rettype": "fasta"},
+    )
+    if response.status_code != 200:
+        raise requests.HTTPError(
+            f"Error fetching sequences from NCBI [code {response.status_code}]."
+            " Bad query IDs?"
+        )
+    sequences = {}
+    for key, value in parse_fasta(response.text.split("\n")).items():
+        for header in headers:
+            if header in key:
+                sequences[header] = value
+                break
+    return sequences
