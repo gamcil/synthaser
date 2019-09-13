@@ -44,29 +44,6 @@ class Synthase:
             return self.header == other.header
         raise NotImplementedError
 
-    def filter_same_type_domains(self):
-        """Filter overlapping Domains on this Synthase, saving best of each group.
-
-        Domains are first sorted and grouped by their type (e.g. 'KS'). Then, each
-        group is filtered such that there are no overlapping domains of the same type.
-        Finally, domains are re-sorted by their location on the Synthase.
-
-        Parameters
-        ----------
-        synthase : dict
-            Dictionary representation of a query synthase.
-        """
-        filtered = []
-        self.domains.sort(key=attrgetter("type"))
-        for _, type_group in groupby(self.domains, key=attrgetter("type")):
-            type_group = list(type_group)
-            type_group.sort(key=attrgetter("start"))
-            filtered.extend(
-                max(group, key=lambda x: x.end - x.start)
-                for group in group_overlapping_hits(type_group)
-            )
-        self.domains = sorted(filtered, key=attrgetter("start"))
-
     def filter_overlapping_domains(self):
         self.domains = [
             max(group, key=lambda x: x.end - x.start)
