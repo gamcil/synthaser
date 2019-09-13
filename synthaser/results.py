@@ -1,9 +1,15 @@
 #!/usr/bin/env python3
 
 
+import logging
 import re
 
-from synthaser.models import Domain, Synthase
+from synthaser.models import Domain, Synthase, hits_overlap
+from synthaser.classify import classify_synthase
+
+
+logging.basicConfig(level=logging.INFO)
+log = logging.getLogger(__name__)
 
 
 class ResultParser:
@@ -39,7 +45,7 @@ class ResultParser:
     """
 
     default_domains = {
-        "KS": ["PKS_KS", "PKS"],
+        "KS": ["PKS_KS", "PKS", "CLF", "KAS_I_II", "CHS_like", "KAS_III"],
         "AT": ["PKS_AT", "Acyl_transf_1"],
         "ER": ["PKS_ER", "enoyl_red"],
         "KR": ["KR", "PKS_KR"],
@@ -59,9 +65,7 @@ class ResultParser:
         "SAT": ["SAT"],
         "C": ["Condensation"],
         "A": ["A_NRPS", "AMP-binding"],
-        # epimerization
-        # prenylation
-        # formlyation
+        # "E": ["NRPS-para261"],
     }
 
     def __init__(self, domains=None):
@@ -138,7 +142,7 @@ class ResultParser:
             )
         raise ValueError(f"'{domain}' not a synthaser key domain")
 
-    def parse(self, results_handle, query_handle=None):
+    def parse(self, results_handle, query_handle=None, sequences=None):
         """Parse CD-Search results.
 
         Parameters
@@ -162,7 +166,12 @@ class ResultParser:
         _query = ""
         _synthase = None
         synthases = []
-        sequences = parse_fasta(query_handle) if query_handle else {}
+
+        if not sequences:
+            if query_handle:
+                sequences = parse_fasta(query_handle) if query_handle else {}
+            else:
+                sequences = {}
 
         for row in results_handle:
             try:
@@ -195,7 +204,10 @@ class ResultParser:
 
         for synthase in synthases:
             synthase.filter_overlapping_domains()
-            synthase.classify()
+            try:
+                classify_synthase(synthase)
+            except ValueError:
+                log.warning("Failed to classify %s", synthase.header)
             synthase.rename_nrps_domains()
 
         return synthases

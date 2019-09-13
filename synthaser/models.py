@@ -2,6 +2,7 @@
 
 
 from collections import defaultdict
+from itertools import groupby
 from operator import attrgetter
 import json
 
@@ -43,28 +44,34 @@ class Synthase:
             return self.header == other.header
         raise NotImplementedError
 
-    def filter_overlapping_domains(self):
+    def filter_same_type_domains(self):
         """Filter overlapping Domains on this Synthase, saving best of each group.
+
+        Domains are first sorted and grouped by their type (e.g. 'KS'). Then, each
+        group is filtered such that there are no overlapping domains of the same type.
+        Finally, domains are re-sorted by their location on the Synthase.
 
         Parameters
         ----------
         synthase : dict
             Dictionary representation of a query synthase.
         """
+        filtered = []
+        self.domains.sort(key=attrgetter("type"))
+        for _, type_group in groupby(self.domains, key=attrgetter("type")):
+            type_group = list(type_group)
+            type_group.sort(key=attrgetter("start"))
+            filtered.extend(
+                max(group, key=lambda x: x.end - x.start)
+                for group in group_overlapping_hits(type_group)
+            )
+        self.domains = sorted(filtered, key=attrgetter("start"))
+
+    def filter_overlapping_domains(self):
         self.domains = [
             max(group, key=lambda x: x.end - x.start)
             for group in group_overlapping_hits(self.domains)
         ]
-
-    def classify(self):
-        """Assign a type and subtype to this Synthase.
-
-        Refer to `assign_type` and `assign_subtype` for description of
-        classification rules.
-        """
-        domains = self.domain_types
-        self.type = assign_type(domains)
-        self.subtype = assign_subtype(self.type, domains)
 
     def rename_nrps_domains(self):
         """Replace domain types in Hybrid and NRPS Synthases.
@@ -84,10 +91,14 @@ class Synthase:
 
             KS-AT-DH-ER-KR-ACP-C-A-T-R
 
-        Lastly, thioester reductase (TR) domains are generally written as R in NRPS,
-        thus the replacement here.
+        Thioester reductase (TR) domains are generally written as R in NRPS, thus the
+        replacement here.
+
+        Finally, if there is an epimerization (E) domain that overlaps with a C domain
+        (i.e. hit NRPS-para261 conserved domain), the C Domain object type will be
+        changed to E, and the E removed.
         """
-        if not self.type or self.type == "PKS":
+        if not self.type or "PKS" in self.type:
             return
         start, replace = 0, {"ACP": "T", "TR": "R"}
         if self.type == "Hybrid":
@@ -97,6 +108,7 @@ class Synthase:
         for domain in self.domains[start:]:
             if domain.type in replace:
                 domain.type = replace[domain.type]
+        rename_parent_domain(self.domains, "C", "E")
 
     def extract_domains(self):
         """Extract all domains in this synthase.
@@ -175,7 +187,7 @@ class Synthase:
 
     @property
     def domain_types(self):
-        return set(domain.type for domain in self.domains)
+        return [domain.type for domain in self.domains]
 
 
 class Domain:
@@ -250,99 +262,6 @@ class Domain:
     @classmethod
     def from_json(cls, json_file):
         return cls(**json.load(json_file))
-
-
-def assign_type(domains):
-    """Determine the broad biosynthetic type of a Synthase.
-
-    Synthases are assigned types based on the following rules:
-
-    Hybrid (PKS-NRPS):
-        Both beta-ketoacyl synthase (KS) and adenylation (A) domains
-    Polyketide synthase (PKS):
-        KS domain
-    Nonribosomal peptide synthase (NRPS):
-        A domain
-
-    Parameters
-    ----------
-    synthase : Synthase
-        A Synthase object with domain hits.
-
-    Returns
-    -------
-    str
-        The biosynthetic type of the given Synthase (hybrid, pks, nrps).
-
-    Raises
-    ------
-    ValueError
-        If no identifying domain (KS, A) is found.
-    """
-    if {"KS", "A"}.issubset(domains):
-        return "Hybrid"
-    if "KS" in domains:
-        return "PKS"
-    if "A" in domains:
-        return "NRPS"
-    raise ValueError("Could not find an identifying domain")
-
-
-def assign_subtype(type, domains):
-    """Determine the biosynthetic subtype of a Synthase.
-
-    Subtypes are determined by the following rules:
-
-    Polyketide synthase (PKS):
-
-    1) Highly-reducing (HR-PKS): enoyl-reductase (ER), keto-reductase (KR) and
-       dehydratase (DH)
-    2) Partially-reducing (PR-PKS): any, but not all, reducing domains used to
-       classify a HR-PKS
-    3) Non-reducing (NR-PKS): no reducing domains, but beta-ketoacyl synthase (KS)
-       and acyltransferase (AT) present
-    4) PKS-like: at least a KS domain
-
-    Nonribosomal peptide synthetase (NRPS):
-
-    1) NRPS: full NRPS module, consisting of adenylation (A), peptidyl-carrier (PCP,
-       aka T) and condensation (C) domains
-    2) NRPS-like: at least an A domain
-
-    If a non-PKS/NRPS Synthase is supplied, then this function will return its `type`
-    attribute.
-
-    Parameters
-    ----------
-    synthase : Synthase
-        A Synthase object with domain hits.
-
-    Returns
-    -------
-    str
-        The biosynthetic subtype of the given Synthase.
-
-    Raises
-    ------
-    ValueError
-        Synthase has type other than "pks" or "nrps" or no subtype could be assigned.
-
-    """
-    if type == "PKS":
-        subtypes = [
-            ("HR-PKS", all, {"ER", "KR", "DH"}),
-            ("PR-PKS", any, {"ER", "KR", "DH"}),
-            ("NR-PKS", all, {"KS", "AT"}),
-            ("PKS-like", any, {"KS"}),
-        ]
-    elif type == "NRPS":
-        subtypes = [("NRPS", all, {"A", "T", "C"}), ("NRPS-like", any, {"A"})]
-    else:
-        return type
-    for subtype, function, required in subtypes:
-        if function(domain in domains for domain in required):
-            return subtype
-    return "Other"
 
 
 def hits_overlap(a, b, threshold=0.9):
@@ -497,3 +416,40 @@ def extract_all_domains(synthases):
                 for i, sequence in enumerate(sequences)
             )
     return dict(combined)
+
+
+def rename_parent_domain(domains, parent, child):
+    """Rename a parent Domain based on a child Domain it contains.
+
+    This is necessary as some domain types do not have a specific hit in the CDD.
+    For example, when an NRPS with an epimerization (E) domain is analysed, it will
+    typically return a 'condensation' hit adjacent to a 'NRPS-para261' hit, which is
+    saved internally as E. Thus, given a list of Domains:
+
+    >>> domains
+    [..., condensation [C] 1-200, NRPS-para261 [E] 80-200, ...]
+
+    We can detect that this C domain should probably be an E domain, and re-type it:
+
+    >>> rename_parent_domain(domains, 'C', 'E')
+    >>> domains
+    [..., condensation [E] 1-200, ...]
+
+    Parameters
+    ----------
+    domains : list
+        List of Domain objects to filter, sorted by location.
+    parent : str
+        Type of the parent (containing) Domain.
+    child : str
+        Type of the child (contained) Domain.
+    """
+    index, total = 1, len(domains)
+    while index < total:
+        one, two = domains[index - 1 : index + 1]
+        if hits_overlap(one, two) and (one.type, two.type) == (parent, child):
+            domains[index - 1].type = child
+            domains.pop(index)
+            total -= 1
+            continue
+        index += 1

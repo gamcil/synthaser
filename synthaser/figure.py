@@ -9,7 +9,7 @@ from itertools import groupby
 from operator import attrgetter
 
 from synthaser.models import Synthase
-from synthaser.cdsearch import CDSearch
+from synthaser.ncbi import CDSearch, efetch_sequences
 from synthaser.results import ResultParser, parse_fasta
 
 logging.basicConfig(level=logging.INFO)
@@ -72,6 +72,10 @@ class Figure:
             if synthase.header == key:
                 return synthase
         raise KeyError(f"No synthase with header '{key}'")
+
+    @property
+    def headers(self):
+        return [synthase.header for synthase in self.synthases]
 
     def set_colours(self, colours):
         """Change colour hex codes for domain types.
@@ -468,38 +472,52 @@ class Figure:
         return cls([Synthase.from_dict(record) for record in json.load(json_file)])
 
     @classmethod
-    def from_cdsearch(cls, query_file, result_file=None, **kwargs):
+    def _local_cdsearch(cls, query_file, results_file=None, **kwargs):
+        cd, rp = CDSearch(), ResultParser()
+        if not results_file:
+            response = cd.search(query_file, **kwargs)
+            with open(query_file) as handle:
+                return cls(rp.parse(response.text.split("\n"), query_file=handle))
+        else:
+            with open(results_file) as results, open(query_file) as queries:
+                return cls(rp.parse(results, query_handle=queries))
+
+    @classmethod
+    def _remote_cdsearch(cls, query_ids, **kwargs):
+        cd, rp = CDSearch(), ResultParser()
+        sequences = efetch_sequences(query_ids)
+        response = cd.search(query_ids=query_ids, **kwargs)
+        return cls(rp.parse(response.text.split("\n"), sequences=sequences))
+
+    @classmethod
+    def from_cdsearch(
+        cls, query_file=None, results_file=None, query_ids=None, **kwargs
+    ):
         """Convenience function to directly instantiate a Figure from a new CDSearch job.
 
-        All additional keyword arguments are passed to `CDSearch.search()`.
-
-        If `result_file` is specified, this function will skip straight to parsing it.
+        Internally calls `_local_cdsearch` or `_remote_cdsearch` classmethods if
+        query_file or query_ids is specified, respectively.
 
         Parameters
         ----------
         query_file : str
             Path to a FASTA file containing query sequences to be analysed.
-        result_file: str, optional
-            Path to a CD-Search results file corresponding to `query_file`.
 
         Returns
         -------
         Figure
             Figure built from the CDSearch query.
         """
-        cd, rp = CDSearch(), ResultParser()
-        with open(query_file) as queries:
-            if not result_file:
-                log.info("Starting new CD-Search run on %s", query_file)
-                response = cd.run(query_file=query_file, **kwargs)
-                log.info("Parsing results")
-                results = rp.parse(response.text.split("\n"), query_handle=queries)
-            else:
-                with open(result_file) as handle:
-                    results = rp.parse(handle, query_handle=queries)
-            return cls(results)
+        if query_file:
+            log.info("Starting new CD-Search run on %s", query_file)
+            return cls._local_cdsearch(query_file, results_file=results_file, **kwargs)
+        elif query_ids:
+            log.info("Starting new CD-Search run on %s", query_ids)
+            return cls._remote_cdsearch(query_ids, **kwargs)
+        else:
+            raise ValueError("Expected query_file or query_ids")
 
-    def add_query_sequences(self, query_handle=None, sequences=None):
+    def add_query_sequences(self, query_handle=None, sequences=None, ncbi=False):
         """Add sequences from query FASTA file to the Figure.
 
         Parameters
@@ -512,7 +530,9 @@ class Figure:
             A pre-populated dictionary containing sequences corresponding to the
             Synthases in this objects `synthases` attribute.
         """
-        if query_handle and not sequences:
+        if ncbi:
+            sequences = efetch_sequences(self.headers)
+        elif query_handle and not sequences:
             sequences = parse_fasta(query_handle)
         for header, sequence in sequences.items():
             try:
