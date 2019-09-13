@@ -197,7 +197,7 @@ def anid():
     """
     results = TEST_DIR / "anid.tsv"
     fasta = TEST_DIR / "anid.faa"
-    figure = Figure.from_cdsearch(fasta, result_file=results)
+    figure = Figure.from_cdsearch(query_file=fasta, results_file=results)
     return figure
 
 

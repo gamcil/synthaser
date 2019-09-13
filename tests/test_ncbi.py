@@ -9,7 +9,7 @@ from pathlib import Path
 import pytest
 import requests_mock
 
-from synthaser.cdsearch import CDSearch
+from synthaser.ncbi import CDSearch
 
 TEST_DIR = Path(__file__).resolve().parent
 

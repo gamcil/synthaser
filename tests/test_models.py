@@ -11,46 +11,12 @@ import pytest
 from synthaser.models import (
     Synthase,
     Domain,
-    assign_type,
-    assign_subtype,
     hits_overlap,
     group_overlapping_hits,
     create_fasta,
     wrap_fasta,
     extract_all_domains,
 )
-
-
-TEST_DIR = Path(__file__).resolve().parent
-
-
-@pytest.mark.parametrize(
-    "types,result", [(["KS", "A"], "Hybrid"), (["KS"], "PKS"), (["A"], "NRPS")]
-)
-def test_assign_type(types, result):
-    with pytest.raises(ValueError):
-        assign_type([])
-    assert assign_type(types) == result
-
-
-@pytest.mark.parametrize(
-    "stype,dtypes,result",
-    [
-        ("PKS", ["ER", "KR", "DH"], "HR-PKS"),
-        ("PKS", ["KR", "DH"], "PR-PKS"),
-        ("PKS", ["DH"], "PR-PKS"),
-        ("PKS", ["KR"], "PR-PKS"),
-        ("PKS", ["KS", "AT"], "NR-PKS"),
-        ("PKS", ["KS"], "PKS-like"),
-        ("PKS", ["AT"], "Other"),
-        ("NRPS", ["A", "T", "C"], "NRPS"),
-        ("NRPS", ["A", "T"], "NRPS-like"),
-        ("NRPS", ["A"], "NRPS-like"),
-        ("Test", [], "Test"),
-    ],
-)
-def test_assign_subtype(stype, dtypes, result):
-    assert assign_subtype(stype, dtypes) == result
 
 
 @pytest.mark.parametrize(
