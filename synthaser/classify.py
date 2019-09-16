@@ -169,7 +169,7 @@ def rename_NRPS_domains(synthase):
 def assign_broad_type(domains):
     """Classify a Synthase as PKS, NRPS or Hybrid PKS-NRPS based on its Domains.
 
- 'NRPS', subtype='NRPS-like'   Hybrid (PKS-NRPS):
+    Hybrid (PKS-NRPS):
         Both beta-ketoacyl synthase (KS) and adenylation (A) domains
     Polyketide synthase (PKS):
         KS domain
