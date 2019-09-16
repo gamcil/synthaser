@@ -3,9 +3,11 @@
 
 import logging
 import re
+from collections import defaultdict
+from operator import attrgetter
 
-from synthaser.models import Domain, Synthase, hits_overlap
-from synthaser.classify import classify_synthase
+from synthaser import fasta, classify
+from synthaser.models import Domain, Synthase
 
 
 logging.basicConfig(level=logging.INFO)
@@ -42,6 +44,12 @@ class ResultParser:
         Dictionary mapping actual domain names from the conserved domain database (CDD)
         to their broader biosynthetic type. This can be altered through the method
         `set_domains` to add more categories or domains.
+
+    special_rules : dict
+        Special classification rules that will be tested in `filter_domains`. These
+        should be lambda functions that take two variables: the container Domain (best
+        scoring of an overlap group) and other Domains in the same group. If True, the
+        container Domain type is set to the type the rule is keyed on.
     """
 
     default_domains = {
@@ -65,7 +73,11 @@ class ResultParser:
         "SAT": ["SAT"],
         "C": ["Condensation"],
         "A": ["A_NRPS", "AMP-binding"],
-        # "E": ["NRPS-para261"],
+        "E": ["NRPS-para261"],
+    }
+
+    special_rules = {
+        "E": lambda a, b: len(a) > len(b) and a.type == "C" and b.type == "E"
     }
 
     def __init__(self, domains=None):
@@ -133,12 +145,16 @@ class ResultParser:
         ValueError
             If the domain in this row is not in the DOMAINS dictionary.
         """
-        _, _, _, start, end, _, _, _, domain, *_ = row.split("\t")
+        _, _, _, start, end, evalue, _, _, domain, *_ = row.split("\t")
         for domain_type, domains in self.domains.items():
             if domain not in domains:
                 continue
             return Domain(
-                type=domain_type, domain=domain, start=int(start), end=int(end)
+                type=domain_type,
+                domain=domain,
+                start=int(start),
+                end=int(end),
+                evalue=float(evalue),
             )
         raise ValueError(f"'{domain}' not a synthaser key domain")
 
@@ -161,96 +177,89 @@ class ResultParser:
         list:
             A list of Synthase objects parsed from the results file.
         """
+        results = self._parse_table(results_handle)
+        return self._build_synthases(
+            results, query_handle=query_handle, sequences=sequences
+        )
+
+    def _parse_table(self, results_handle):
+        """Parse a CD-Search results table and instantiate Domain objects for each hit.
+        """
         query_regex = re.compile(r"Q#\d+? - [>]?(.+?)\t")
-
-        _query = ""
-        _synthase = None
-        synthases = []
-
-        if not sequences:
-            if query_handle:
-                sequences = parse_fasta(query_handle) if query_handle else {}
-            else:
-                sequences = {}
-
+        results = defaultdict(list)
         for row in results_handle:
             try:
                 row = row.decode()
             except AttributeError:
                 pass  # in case rows are unicode
-
             if not row.startswith("Q#") or row.isspace():
                 continue
-
             query = query_regex.search(row).group(1)
-
-            if query != _query:
-                if _synthase:
-                    synthases.append(_synthase)
-                _query = query
-                _synthase = Synthase(
-                    header=query,
-                    sequence=sequences[query] if query in sequences else "",
-                )
             try:
                 domain = self.parse_row(row)
             except ValueError:
                 continue
+            results[query].append(domain)
+        return results
 
-            _synthase.domains.append(domain)
+    def _build_synthases(self, results, query_handle=None, sequences=None):
+        """Build Synthase objects from a parsed results dictionary."""
+        if not sequences:
+            if query_handle:
+                sequences = fasta.parse(query_handle) if query_handle else {}
+            else:
+                sequences = {}
+        return [
+            self._new_synthase(
+                name, domains, sequences[name] if name in sequences else ""
+            )
+            for name, domains in results.items()
+        ]
 
-        if _synthase:
-            synthases.append(_synthase)
+    def _new_synthase(self, name, domains, sequence=""):
+        """Instantiate and classify a new Synthase object."""
+        synthase = Synthase(
+            header=name, sequence=sequence, domains=self.filter_domains(domains)
+        )
+        classify.classify(synthase)
+        return synthase
 
-        for synthase in synthases:
-            synthase.filter_overlapping_domains()
-            try:
-                classify_synthase(synthase)
-            except ValueError:
-                log.warning("Failed to classify %s", synthase.header)
-            synthase.rename_nrps_domains()
+    def filter_domains(self, domains):
+        """Filter overlapping Domain objects and test special rules."""
+        return [
+            self.apply_special_rules(group) for group in group_overlapping_hits(domains)
+        ]
 
-        return synthases
+    def apply_special_rules(self, group):
+        """Test an overlapping Domain group for special rules.
 
+        This function uses the rules stored in `special_rules`, which are lambdas that
+        take two variables. It sorts the group by e-value, then tests each rule using
+        the container (first, best scoring group) against all other Domains in the
+        group.
 
-def parse_fasta(fasta):
-    """Parse an open FASTA file for sequences.
+        If any test is True, the container type is set to the rule key and returned.
+        Otherwise, this function will return the container Domain with no modification.
 
-    For example, given a FASTA file `fasta.faa` containing:
+        Parameters
+        ----------
+        group : list
+            Overlapping `Domain` objects, the yielded product from `group_overlapping_hits`.
 
-    ::
-        >sequence
-        ACGTACGTACGT
-
-    This file can be parsed:
-
-    >>> with open('fasta.faa') as handle:
-    ...     parse_fasta(handle)
-    {"sequence": "ACGTACGTACGT"}
-
-    Parameters
-    ----------
-    fasta : str
-        Either an open file handle of a FASTA file, or newline split string (e.g. read
-        in via readlines()) that can be iterated over.
-
-    Returns
-    -------
-    sequences : dict
-        Sequences in the FASTA file, keyed on sequence headers.
-    """
-    sequences = {}
-    for line in fasta:
-        try:
-            line = line.decode().strip()
-        except AttributeError:
-            line = line.strip()
-        if line.startswith(">"):
-            header = line[1:]
-            sequences[header] = ""
-        else:
-            sequences[header] += line
-    return sequences
+        Returns
+        -------
+        Domain
+            Highest scoring `Domain` in the group. If any special rules have been satisfied,
+            the type of this `Domain` will be set to that rule (e.g. Condensation ->
+            Epimerization).
+        """
+        container, *_group = sorted(group, key=attrgetter("evalue"))
+        for domain in _group:
+            for new_type, rule in self.special_rules.items():
+                if rule(container, domain):
+                    container.type = new_type
+                    return container
+        return container
 
 
 def parse_results(results_file):
@@ -261,3 +270,64 @@ def parse_results(results_file):
     rp = ResultParser()
     with open(results_file) as results:
         return rp.parse(results)
+
+
+def hits_overlap(a, b, threshold=0.9):
+    """Return True if Domain overlap is greater than threshold * domain size.
+
+    Parameters
+    ----------
+    a : Domain
+        First Domain object.
+    b : Domain
+        Second Domain object.
+    threshold : int
+        Minimum percentage to classify two Domains as overlapping. By default,
+        `threshold` is set to 0.9, i.e. two Domains are considered as overlapping if
+        the total amount of overlap is greater than 90% of either Domain hit.
+
+    Returns
+    -------
+    bool
+        True if Domain overlap exceeds threshold, False if not.
+    """
+    start, end = max(a.start, b.start), min(a.end, b.end)
+    overlap = max(0, end - start)
+    a_threshold = threshold * (a.end - a.start)
+    b_threshold = threshold * (b.end - b.start)
+    return overlap >= a_threshold or overlap >= b_threshold
+
+
+def group_overlapping_hits(domains, threshold=0.9):
+    """Iterator that groups Domain objects based on overlapping locations.
+
+    Parameters
+    ----------
+    domains : list, tuple
+        Domain objects to be grouped.
+    threshold : float
+        See hits_overlap().
+
+    Yields
+    ------
+    group : list
+        A group of overlapping Domain objects, as computed by hits_overlap().
+    """
+    domains.sort(key=attrgetter("start"))
+    i, total = 0, len(domains)
+    while i < total:
+        current = domains[i]  # grab current hit
+        group = [current]  # start group
+        if i == total - 1:  # if current hit is the last, yield
+            yield group
+            break
+        for j in range(i + 1, total):  # iterate rest
+            future = domains[j]  # grab next hit
+            if hits_overlap(current, future, threshold):
+                group.append(future)  # add if contained
+            else:
+                yield group  # else yield to iterator
+                break
+            if j == total - 1:  # if reached the end, yield
+                yield group
+        i += len(group)  # move index ahead of last group
