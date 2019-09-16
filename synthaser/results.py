@@ -172,18 +172,31 @@ class ResultParser:
             An open file handle for the sequences used in the CD-search run. Sequences
             can be added later via `Figure.add_query_sequences()`.
 
+        sequences : dict
+            Sequences for query sequences, keyed on query name.
+
         Returns
         -------
         list:
             A list of Synthase objects parsed from the results file.
         """
-        results = self._parse_table(results_handle)
-        return self._build_synthases(
+        results = self.parse_table(results_handle)
+        return self.build_synthases(
             results, query_handle=query_handle, sequences=sequences
         )
 
-    def _parse_table(self, results_handle):
+    def parse_table(self, results_handle):
         """Parse a CD-Search results table and instantiate Domain objects for each hit.
+
+        Parameters
+        ----------
+        results_handle : open file handle
+            Open file handle corresponding to a CD-Search results file.
+
+        Returns
+        -------
+        results : dict
+            Lists of Domain objects keyed on the query they were found in.
         """
         query_regex = re.compile(r"Q#\d+? - [>]?(.+?)\t")
         results = defaultdict(list)
@@ -200,23 +213,39 @@ class ResultParser:
             except ValueError:
                 continue
             results[query].append(domain)
-        return results
+        return dict(results)
 
-    def _build_synthases(self, results, query_handle=None, sequences=None):
-        """Build Synthase objects from a parsed results dictionary."""
+    def build_synthases(self, results, query_handle=None, sequences=None):
+        """Build Synthase objects from a parsed results dictionary.
+
+        Parameters
+        ----------
+        results : dict
+            Grouped Domains; output from `parse_table`.
+        query_handle: open file handle, optional
+            Open file handle corresponding to the FASTA file used as a query. Parsed for
+            sequences.
+        sequences: dict, optional
+            Sequences for each query sequence keyed on query name.
+
+        Returns
+        -------
+        list
+            Synthase objects containing all Domain objects found in the CD-Search.
+        """
         if not sequences:
             if query_handle:
                 sequences = fasta.parse(query_handle) if query_handle else {}
             else:
                 sequences = {}
         return [
-            self._new_synthase(
+            self.new_synthase(
                 name, domains, sequences[name] if name in sequences else ""
             )
             for name, domains in results.items()
         ]
 
-    def _new_synthase(self, name, domains, sequence=""):
+    def new_synthase(self, name, domains, sequence=""):
         """Instantiate and classify a new Synthase object."""
         synthase = Synthase(
             header=name, sequence=sequence, domains=self.filter_domains(domains)

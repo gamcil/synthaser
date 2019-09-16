@@ -144,12 +144,12 @@ def test_ResultParser_parse_table(resultparser, tmp_path, results):
         "Q#2 - >two\t\t\t0\t100\t0\t\t\tA_NRPS\t\t\n"
     )
     with results_file.open() as r:
-        assert resultparser._parse_table(r) == results
+        assert resultparser.parse_table(r) == results
 
 
 def test_ResultParser_build_synthases(resultparser, results):
     sequences = {"one": "ACGT"}
-    assert resultparser._build_synthases(results, sequences=sequences) == [
+    assert resultparser.build_synthases(results, sequences=sequences) == [
         Synthase(header="one", type="Type I PKS", subtype="PKS-like", sequence="ACGT"),
         Synthase(header="two", type="NRPS", subtype="NRPS-like"),
     ]
@@ -180,7 +180,7 @@ def test_ResultParser_build_synthases(resultparser, results):
     ],
 )
 def test_ResultParser_new_synthase(resultparser, header, sequence, domains, result):
-    assert resultparser._new_synthase(header, domains, sequence) == result
+    assert resultparser.new_synthase(header, domains, sequence) == result
 
 
 def test_ResultParser_filter_domains(resultparser):
