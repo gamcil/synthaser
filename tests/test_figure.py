@@ -8,7 +8,8 @@ from pathlib import Path
 
 import pytest
 
-from synthaser.figure import Figure, _validate_colour
+from synthaser import ncbi
+from synthaser.figure import Figure, validate_colour
 from synthaser.models import Synthase, Domain
 
 TEST_DIR = Path(__file__).resolve().parent
@@ -26,7 +27,7 @@ TEST_DIR = Path(__file__).resolve().parent
     ],
 )
 def test_validate_colour(code, result):
-    assert _validate_colour(code) is result
+    assert validate_colour(code) is result
 
 
 @pytest.fixture
@@ -41,11 +42,13 @@ def domains():
 
 @pytest.fixture
 def synthase(domains):
-    synth = Synthase(
-        header="test", sequence="A" * 200, domains=domains, type="PKS", subtype="NR-PKS"
+    return Synthase(
+        header="test",
+        sequence="A" * 200,
+        domains=[domains[0], domains[2]],
+        type="PKS",
+        subtype="NR-PKS",
     )
-    synth.filter_overlapping_domains()
-    return synth
 
 
 @pytest.fixture
@@ -229,6 +232,8 @@ def test_Figure_add_query_sequences(figure):
     """Test adding amino acid sequences to the Figure."""
     with pytest.raises(KeyError):
         figure.add_query_sequences(sequences={"not_in_figure": "ACGT"})
+    with pytest.raises(ValueError):
+        figure.add_query_sequences(sequences={})
     figure.add_query_sequences(sequences={"hrpks1": "ACGT", "nrps": "ACGT"})
     assert figure["hrpks1"].sequence == "ACGT"
     assert figure["nrps"].sequence == "ACGT"

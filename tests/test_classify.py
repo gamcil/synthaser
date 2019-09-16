@@ -1,6 +1,11 @@
 #!/usr/bin/env python3
 
 
+"""
+Tests for classify.py
+"""
+
+
 import pytest
 
 
@@ -72,11 +77,35 @@ def test_assign_broad_type_no_domains():
 def test_classify_synthase():
     synthase = Synthase(domains=[Domain(type="KS", domain="PKS")])
 
-    classify.classify_synthase(synthase)
+    classify.classify(synthase)
     assert synthase.type == "Type I PKS"
     assert synthase.subtype == "PKS-like"
 
     synthase.domains.append(Domain(type="A"))
-    classify.classify_synthase(synthase)
+    classify.classify(synthase)
     assert synthase.type == "Hybrid"
     assert synthase.subtype == "Hybrid"
+
+
+@pytest.mark.parametrize(
+    "type,domains,result",
+    [
+        ("Hybrid", [Domain(t) for t in ("KS", "AT")], "KS-AT"),
+        (
+            "Hybrid",
+            [Domain(t) for t in ("KS", "AT", "ACP", "C", "A", "ACP", "TR")],
+            "KS-AT-ACP-C-A-T-R",
+        ),
+        ("NRPS", [Domain(t) for t in ("ACP", "C", "A", "ACP", "TR")], "T-C-A-T-R"),
+    ],
+)
+def test_rename_NRPS_domains(type, domains, result):
+    synthase = Synthase(type=type, domains=domains)
+    classify.rename_NRPS_domains(synthase)
+    assert synthase.architecture == result
+
+
+def test_rename_NRPS_domains_bad_type():
+    synthase = Synthase(type="Type I PKS")
+    with pytest.raises(ValueError):
+        classify.rename_NRPS_domains(synthase)

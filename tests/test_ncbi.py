@@ -7,9 +7,10 @@ Unit tests for cdsearch.py
 from pathlib import Path
 
 import pytest
+import requests
 import requests_mock
 
-from synthaser.ncbi import CDSearch
+from synthaser.ncbi import CDSearch, efetch_sequences
 
 TEST_DIR = Path(__file__).resolve().parent
 
@@ -83,6 +84,19 @@ def test_CDSearch_new_search(cdsearch):
         cdsid = "QM3-qcdsearch-5C11C54FC403F91-E792C9BEE9818D8"
         assert cdsearch.new_search(query_ids=query_ids) == cdsid
         assert cdsearch.new_search(query_file=query_file) == cdsid
+
+
+def test_CDSearch_search_query_file_over_limit(cdsearch, tmp_path):
+    fasta_file = tmp_path / "fasta.faa"
+    fasta_file.write_text(">\n" * 4001)
+    with pytest.raises(ValueError):
+        cdsearch._search_query_file(fasta_file)
+
+
+def test_CDSearch_search_query_ids_over_limit(cdsearch):
+    query_ids = ["id"] * 4001
+    with pytest.raises(ValueError):
+        cdsearch._search_query_ids(query_ids)
 
 
 def test_CDSearch_check_status_empty_file(cdsearch):
@@ -176,3 +190,22 @@ def test_CDSearch_retrieve_results_no_response(cdsearch, monkeypatch):
 def test_CDSearch_retrieve_results_input(cdsearch):
     with pytest.raises(ValueError):
         cdsearch.retrieve_results("test", delay=5)
+
+
+def test_efetch_sequences_bad_response():
+    with requests_mock.Mocker() as m, pytest.raises(requests.HTTPError):
+        m.get(
+            "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi?",
+            status_code="400",
+        )
+        efetch_sequences(["header"])
+
+
+def test_efetch_sequences():
+    headers = ["sequence", "sequence2"]
+    with requests_mock.Mocker() as m:
+        m.get(
+            "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi?",
+            text=">sequence with long definition\nACGT\n>sequence2 test\nACGT",
+        )
+        assert efetch_sequences(headers) == {"sequence": "ACGT", "sequence2": "ACGT"}

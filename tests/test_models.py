@@ -4,43 +4,9 @@
 Test suite for models.py
 """
 
-from pathlib import Path
-
 import pytest
 
-from synthaser.models import (
-    Synthase,
-    Domain,
-    hits_overlap,
-    group_overlapping_hits,
-    create_fasta,
-    wrap_fasta,
-    extract_all_domains,
-)
-
-
-@pytest.mark.parametrize(
-    "a,b,threshold,result",
-    [((0, 100), (10, 110), 0.9, True), ((0, 100), (80, 180), 0.9, False)],
-)
-def test_hits_overlap(a, b, threshold, result):
-    dom_a = Domain(start=a[0], end=a[1])
-    dom_b = Domain(start=b[0], end=b[1])
-    assert hits_overlap(dom_a, dom_b, threshold=threshold) == result
-
-
-def test_group_overlapping_hits():
-    domains = [
-        Domain(start=0, end=100),
-        Domain(start=10, end=110),
-        Domain(start=90, end=200),
-        Domain(start=180, end=290),
-        Domain(start=180, end=300),
-    ]
-
-    groups = [group for group in group_overlapping_hits(domains)]
-
-    assert groups == [domains[0:2], [domains[2]], domains[3:]]
+from synthaser.models import Synthase, Domain, extract_all_domains
 
 
 def test_Domain_slice():
@@ -78,11 +44,13 @@ def domains():
 
 @pytest.fixture
 def synthase(domains):
-    synth = Synthase(
-        header="test", sequence="A" * 200, domains=domains, type="PKS", subtype="NR-PKS"
+    return Synthase(
+        header="test",
+        sequence="A" * 200,
+        domains=[domains[0], domains[2]],
+        type="PKS",
+        subtype="NR-PKS",
     )
-    synth.filter_overlapping_domains()
-    return synth
 
 
 def test_domain_repr(domains):
@@ -156,35 +124,6 @@ def test_Synthase_extract_domains(synthase, domains):
         synthase.extract_domains()
 
 
-def test_Synthase_filter_overlapping_domains(domains, synthase):
-    """Test domain filtering; function called in fixture function."""
-    assert synthase.domains == [domains[0], domains[2]]
-
-
-def test_Synthase_rename_nrps_domains(synthase):
-    """Test computation of domain architecture based on Synthase type.
-    For example, non-PKS synthases should replace ACP->T and TR->R; 'Hybrid' type
-    should only replace after the condensation domain, 'NRPS' should replace all.
-    """
-    synthase.type = "Hybrid"
-    nrps_module = [
-        Domain(start=200, end=250, type="ACP", domain="PKS_PP"),
-        Domain(start=250, end=350, type="C", domain="Condensation"),
-        Domain(start=350, end=450, type="A", domain="A_NRPS"),
-        Domain(start=450, end=550, type="ACP", domain="PKS_PP"),
-        Domain(start=550, end=650, type="TR", domain="Thioester-redct"),
-    ]
-    synthase.domains.extend(nrps_module)
-    assert synthase.architecture == "KS-AT-ACP-C-A-ACP-TR"
-    synthase.rename_nrps_domains()
-    assert synthase.architecture == "KS-AT-ACP-C-A-T-R"
-
-    synthase.type = "NRPS"
-    synthase.domains = nrps_module
-    synthase.rename_nrps_domains()
-    assert synthase.architecture == "T-C-A-T-R"
-
-
 def test_Synthase_architecture(synthase):
     assert synthase.architecture == "KS-AT"
 
@@ -201,20 +140,3 @@ def test_extract_all_domains():
     assert extract_all_domains([one, two]) == {
         "KS": [("one_KS_0", "AAAAA"), ("two_KS_0", "AAAAA")]
     }
-
-
-def test_wrap_fasta():
-    sequence = "GAGAACGTCGACGTCGATCGATCTAGCTGACAGCTAGCTA"
-    wrapped = wrap_fasta(sequence, limit=10)
-    assert wrapped == "GAGAACGTCG\nACGTCGATCG\nATCTAGCTGA\nCAGCTAGCTA"
-
-
-@pytest.mark.parametrize(
-    "header,sequence,wrap,result",
-    [
-        ("header", "AAAAABBBBBCCCCC", 5, ">header\nAAAAA\nBBBBB\nCCCCC"),
-        (12345, "AAAAABBBBBCCCCC", 10, ">12345\nAAAAABBBBB\nCCCCC"),
-    ],
-)
-def test_create_fasta(header, sequence, wrap, result):
-    assert create_fasta(header, sequence, wrap=wrap) == result
