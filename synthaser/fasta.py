@@ -70,13 +70,12 @@ def parse(fasta):
 
 
 def wrap(sequence, limit=80):
-    """Wrap FASTA record to 80 characters per line.
+    """Wrap sequences to `limit` characters per line.
 
     Parameters
     ----------
     sequence : str
         Sequence to be wrapped.
-
     limit : int
         Total characters per line.
 
@@ -93,8 +92,12 @@ def create(header, sequence, limit=80):
 
     For example:
 
-    >>> create_fasta('header', 'AAAAABBBBBCCCCC', wrap=5)
-    '>header\\nAAAAA\\nBBBBB\\nCCCCC'
+    >>> fasta = create_fasta('header', 'AAAAABBBBBCCCCC', wrap=5)
+    >>> print(fasta)
+    >header
+    AAAAA
+    BBBBB
+    CCCCC
 
     Parameters
     ----------
