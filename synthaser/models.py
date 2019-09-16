@@ -2,8 +2,6 @@
 
 
 from collections import defaultdict
-from itertools import groupby
-from operator import attrgetter
 import json
 
 
@@ -43,49 +41,6 @@ class Synthase:
         if isinstance(other, type(self)):
             return self.header == other.header
         raise NotImplementedError
-
-    def filter_overlapping_domains(self):
-        self.domains = [
-            max(group, key=lambda x: x.end - x.start)
-            for group in group_overlapping_hits(self.domains)
-        ]
-
-    def rename_nrps_domains(self):
-        """Replace domain types in Hybrid and NRPS Synthases.
-
-        The acyl carrier protein (ACP) domain in PKSs is homologous to the thioester
-        domain of the peptide carrier protein (PCP) domain in NRPSs, and as such, both
-        PKS and NRPS will report the same conserved domain hit. In NRPS, it is
-        convention to name these T, i.e.::
-
-            A-ACP-C --> A-T-C
-
-        In hybrid PKS-NRPS, this replacement is made in the NRPS module of the synthase.
-        Thus, this function looks for a condensation (C) domain that typically signals
-        the beginning of such a module, and replaces any ACP with T after that domain.
-
-        An example PKS-NRPS domain architecture may resemble::
-
-            KS-AT-DH-ER-KR-ACP-C-A-T-R
-
-        Thioester reductase (TR) domains are generally written as R in NRPS, thus the
-        replacement here.
-
-        Finally, if there is an epimerization (E) domain that overlaps with a C domain
-        (i.e. hit NRPS-para261 conserved domain), the C Domain object type will be
-        changed to E, and the E removed.
-        """
-        if not self.type or "PKS" in self.type:
-            return
-        start, replace = 0, {"ACP": "T", "TR": "R"}
-        if self.type == "Hybrid":
-            for start, domain in enumerate(self.domains):
-                if domain.type == "C":
-                    break
-        for domain in self.domains[start:]:
-            if domain.type in replace:
-                domain.type = replace[domain.type]
-        rename_parent_domain(self.domains, "C", "E")
 
     def extract_domains(self):
         """Extract all domains in this synthase.
@@ -170,13 +125,14 @@ class Synthase:
 class Domain:
     """Store a conserved domain hit."""
 
-    __slots__ = ("type", "domain", "start", "end")
+    __slots__ = ("type", "domain", "start", "end", "evalue")
 
-    def __init__(self, type=None, domain=None, start=None, end=None):
+    def __init__(self, type=None, domain=None, start=None, end=None, evalue=None):
         self.type = type
         self.domain = domain
         self.start = start
         self.end = end
+        self.evalue = evalue
 
     def __repr__(self):
         return f"{self.domain} [{self.type}] {self.start}-{self.end}"
@@ -190,6 +146,9 @@ class Domain:
                 and self.end == other.end
             )
         raise NotImplementedError
+
+    def __len__(self):
+        return self.end - self.start
 
     def slice(self, sequence):
         """Slice segment of sequence using the position of this Domain.
@@ -241,112 +200,6 @@ class Domain:
         return cls(**json.load(json_file))
 
 
-def hits_overlap(a, b, threshold=0.9):
-    """Return True if Domain overlap is greater than threshold * domain size.
-
-    Parameters
-    ----------
-    a : Domain
-        First Domain object.
-    b : Domain
-        Second Domain object.
-    threshold : int
-        Minimum percentage to classify two Domains as overlapping. By default,
-        `threshold` is set to 0.9, i.e. two Domains are considered as overlapping if
-        the total amount of overlap is greater than 90% of either Domain hit.
-
-    Returns
-    -------
-    bool
-        True if Domain overlap exceeds threshold, False if not.
-    """
-    start, end = max(a.start, b.start), min(a.end, b.end)
-    overlap = max(0, end - start)
-    a_threshold = threshold * (a.end - a.start)
-    b_threshold = threshold * (b.end - b.start)
-    return overlap >= a_threshold or overlap >= b_threshold
-
-
-def group_overlapping_hits(domains, threshold=0.9):
-    """Iterator that groups Domain objects based on overlapping locations.
-
-    Parameters
-    ----------
-    domains : list, tuple
-        Domain objects to be grouped.
-    threshold : float
-        See hits_overlap().
-
-    Yields
-    ------
-    group : list
-        A group of overlapping Domain objects, as computed by hits_overlap().
-    """
-    domains.sort(key=attrgetter("start"))
-    i, total = 0, len(domains)
-    while i < total:
-        current = domains[i]  # grab current hit
-        group = [current]  # start group
-        if i == total - 1:  # if current hit is the last, yield
-            yield group
-            break
-        for j in range(i + 1, total):  # iterate rest
-            future = domains[j]  # grab next hit
-            if hits_overlap(current, future, threshold):
-                group.append(future)  # add if contained
-            else:
-                yield group  # else yield to iterator
-                break
-            if j == total - 1:  # if reached the end, yield
-                yield group
-        i += len(group)  # move index ahead of last group
-
-
-def wrap_fasta(sequence, limit=80):
-    """Wrap FASTA record to 80 characters per line.
-
-    Parameters
-    ----------
-    sequence : str
-        Sequence to be wrapped.
-
-    limit : int
-        Total characters per line.
-
-    Returns
-    -------
-    str
-        Sequence wrapped to maximum `limit` characters per line.
-    """
-    return "\n".join(sequence[i : i + limit] for i in range(0, len(sequence), limit))
-
-
-def create_fasta(header, sequence, wrap=80):
-    """Create a FASTA format string from a header and sequence.
-
-    For example:
-
-    >>> create_fasta('header', 'AAAAABBBBBCCCCC', wrap=5)
-    '>header\\nAAAAA\\nBBBBB\\nCCCCC'
-
-    Parameters
-    ----------
-    header : str
-        Name to use in FASTA definition line (i.e. >header).
-    sequence : str
-        The sequence corresponding to the `header`.
-    wrap : int
-        The number of characters per line for wrapping the given `sequence`.
-        This function will call `wrap_fasta`.
-
-    Returns
-    -------
-    str
-        FASTA format string.
-    """
-    return ">{}\n{}".format(header, wrap_fasta(sequence, limit=wrap))
-
-
 def extract_all_domains(synthases):
     """Extract all domain sequences in a list of `Synthase` objects.
 
@@ -393,40 +246,3 @@ def extract_all_domains(synthases):
                 for i, sequence in enumerate(sequences)
             )
     return dict(combined)
-
-
-def rename_parent_domain(domains, parent, child):
-    """Rename a parent Domain based on a child Domain it contains.
-
-    This is necessary as some domain types do not have a specific hit in the CDD.
-    For example, when an NRPS with an epimerization (E) domain is analysed, it will
-    typically return a 'condensation' hit adjacent to a 'NRPS-para261' hit, which is
-    saved internally as E. Thus, given a list of Domains:
-
-    >>> domains
-    [..., condensation [C] 1-200, NRPS-para261 [E] 80-200, ...]
-
-    We can detect that this C domain should probably be an E domain, and re-type it:
-
-    >>> rename_parent_domain(domains, 'C', 'E')
-    >>> domains
-    [..., condensation [E] 1-200, ...]
-
-    Parameters
-    ----------
-    domains : list
-        List of Domain objects to filter, sorted by location.
-    parent : str
-        Type of the parent (containing) Domain.
-    child : str
-        Type of the child (contained) Domain.
-    """
-    index, total = 1, len(domains)
-    while index < total:
-        one, two = domains[index - 1 : index + 1]
-        if hits_overlap(one, two) and (one.type, two.type) == (parent, child):
-            domains[index - 1].type = child
-            domains.pop(index)
-            total -= 1
-            continue
-        index += 1
