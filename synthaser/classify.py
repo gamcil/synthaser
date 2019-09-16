@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
-"""This module stores all of the routines for classification of Synthase objects into
+"""
+This module stores all of the routines for classification of Synthase objects into
 biosynthetic categories.
 """
 
@@ -122,10 +123,53 @@ def assign_NRPS_type(domains):
     return "NRPS-like"
 
 
+def rename_NRPS_domains(synthase):
+    """Replace domain types in Hybrid and NRPS Synthases.
+
+    The acyl carrier protein (ACP) domain in PKSs is homologous to the thioester
+    domain of the peptide carrier protein (PCP) domain in NRPSs, and as such, both
+    PKS and NRPS will report the same conserved domain hit. In NRPS, it is
+    convention to name these T, i.e.::
+
+        A-ACP-C --> A-T-C
+
+    In hybrid PKS-NRPS, this replacement is made in the NRPS module of the synthase.
+    Thus, this function looks for a condensation (C) domain that typically signals
+    the beginning of such a module, and replaces any ACP with T after that domain.
+
+    An example PKS-NRPS domain architecture may resemble::
+
+        KS-AT-DH-ER-KR-ACP-C-A-T-R
+
+    Thioester reductase (TR) domains are generally written as R in NRPS, thus the
+    replacement here.
+
+    Parameters
+    ----------
+    synthase : models.Synthase
+        An NRPS or Hybrid Synthase object.
+
+    Raises
+    ------
+    ValueError
+        If `type` is not 'Hybrid' or 'NRPS'.
+    """
+    if synthase.type not in ("Hybrid", "NRPS"):
+        raise ValueError("Expected 'Hybrid' or 'NRPS'")
+    start, replace = 0, {"ACP": "T", "TR": "R"}
+    if synthase.type == "Hybrid":
+        for start, domain in enumerate(synthase.domains):
+            if domain.type == "C":
+                break
+    for domain in synthase.domains[start:]:
+        if domain.type in replace:
+            domain.type = replace[domain.type]
+
+
 def assign_broad_type(domains):
     """Classify a Synthase as PKS, NRPS or Hybrid PKS-NRPS based on its Domains.
 
-    Hybrid (PKS-NRPS):
+ 'NRPS', subtype='NRPS-like'   Hybrid (PKS-NRPS):
         Both beta-ketoacyl synthase (KS) and adenylation (A) domains
     Polyketide synthase (PKS):
         KS domain
@@ -157,7 +201,7 @@ def assign_broad_type(domains):
     raise ValueError("Could not find an identifying domain")
 
 
-def classify_synthase(synthase):
+def classify(synthase):
     """Classify a Synthase.
 
     First, assign a broad biosynthetic type to the Synthase (PKS, NRPS, Hybrid).
@@ -167,4 +211,6 @@ def classify_synthase(synthase):
     if synthase.type == "Type I PKS":
         synthase.subtype = assign_T1PKS_subtype(synthase.domain_types)
     else:
+        if synthase.type in ("Hybrid", "NRPS"):
+            rename_NRPS_domains(synthase)
         synthase.subtype = synthase.type

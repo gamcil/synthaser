@@ -7,7 +7,7 @@ import re
 
 import requests
 
-from synthaser.results import parse_fasta
+from synthaser import fasta
 
 logging.basicConfig(level=logging.INFO)
 log = logging.getLogger(__name__)
@@ -104,6 +104,59 @@ class CDSearch:
                 raise ValueError(f"{key} is not a valid keyword")
             self.parameters[key] = value
 
+    def _search_query_file(self, query_file):
+        """Launch a new CD-Search job from a query file.
+
+        Checks that file contains less than 4000 sequences, as per NCBI limit.
+
+        Parameters
+        ----------
+        query_file : str
+            Path to query FASTA file.
+
+        Raises
+        ------
+        FileNotFoundError
+            If no file exists at the path specified by ``query_file``. This is
+            propagated from calling ``open(query_file)``.
+        """
+        with open(query_file) as query_handle:
+            if fasta.count(query_handle) > 4000:
+                raise ValueError("Too many sequences in file (NCBI limit = 4000).")
+            return requests.post(
+                self.ncbi, files={"queries": query_handle}, data=self.parameters
+            )
+
+    def _search_query_ids(self, query_ids):
+        """Launch a new CD-Search job from a collection of query IDs.
+
+        Parameters
+        ----------
+        query_ids : list, tuple
+            Collection of valid NCBI sequence identifiers to be searched.
+
+        Raises
+        ------
+        TypeError
+            If ``query_ids`` is not a list or tuple.
+        TypeError
+            If values in ``query_ids`` are not of type ``int`` or ``str``.
+        ValueError
+            If neither ``query_ids`` or ``query_file`` are specified.
+        """
+        if not isinstance(query_ids, (list, tuple)):
+            raise TypeError("Query IDs must be given in a list or tuple")
+
+        if not all(isinstance(x, (int, str)) for x in query_ids):
+            raise TypeError("Expected a list/tuple of int/str")
+
+        if len(query_ids) > 4000:
+            raise ValueError("Too many sequences in file (NCBI limit = 4000).")
+
+        data = self.parameters.copy()
+        data["queries"] = "\n".join(query_ids)  # line feed -> %0A
+        return requests.post(self.ncbi, params=data)
+
     def new_search(self, query_file=None, query_ids=None):
         """Launch a new CD-Search run using a FASTA file or list of NCBI identifiers.
 
@@ -132,37 +185,15 @@ class CDSearch:
 
         Raises
         ------
-        FileNotFoundError
-            If no file exists at the path specified by ``query_file``. This is
-            propagated from calling ``open(query_file)``.
-        TypeError
-            If ``query_ids`` is not a list or tuple.
-        TypeError
-            If values in ``query_ids`` are not of type ``int`` or ``str``.
-        ValueError
-            If neither ``query_ids`` or ``query_file`` are specified.
         AttributeError
             If Response returned by the POST request contains no search ID.
         """
         if query_file and not query_ids:
-            with open(query_file) as query_handle:
-                response = requests.post(
-                    self.ncbi, files={"queries": query_handle}, data=self.parameters
-                )
-
+            response = self._search_query_file(query_file)
         elif query_ids and not query_file:
-            if not isinstance(query_ids, (list, tuple)):
-                raise TypeError("Query IDs must be given in a list or tuple")
-
-            if not all(isinstance(x, (int, str)) for x in query_ids):
-                raise TypeError("Expected a list/tuple of int/str")
-
-            data = self.parameters.copy()
-            data["queries"] = "\n".join(query_ids)  # line feed -> %0A
-            response = requests.post(self.ncbi, params=data)
+            response = self._search_query_ids(query_ids)
         else:
             raise ValueError("A query must be specified with query_file OR query_ids")
-
         try:
             return re.search(r"#cdsid\t(.+?)\n", response.text).group(1)
         except AttributeError as exc:
@@ -264,7 +295,7 @@ class CDSearch:
 
         max_retries : int
             Maximum number of retries for checking job completion. If -1 is given, this
-            function will keep paging the NCBI for results until something is returned.
+            function will keep paging for results until something is returned.
 
         delay : int
             Number of seconds to wait between each request to the NCBI. The wait time is
@@ -330,7 +361,7 @@ def efetch_sequences(headers):
     """Retrieve protein sequences from NCBI for supplied accessions.
 
     This function uses EFetch from the NCBI E-utilities to retrieve the sequences for
-    all synthases specified in `headers`. It then calls `parse_fasta` to parse the
+    all synthases specified in `headers`. It then calls `fasta.parse` to parse the
     returned response; note that extra processing has to occur because the returned
     FASTA will contain a full sequence description in the header line after the
     accession.
@@ -351,9 +382,9 @@ def efetch_sequences(headers):
             " Bad query IDs?"
         )
     sequences = {}
-    for key, value in parse_fasta(response.text.split("\n")).items():
+    for key, value in fasta.parse(response.text.split("\n")).items():
         for header in headers:
-            if header in key:
+            if header not in sequences and header in key:
                 sequences[header] = value
                 break
     return sequences
