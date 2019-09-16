@@ -2,18 +2,15 @@
 
 
 import json
-import logging
 import re
 
 from itertools import groupby
 from operator import attrgetter
 
+from synthaser import fasta
 from synthaser.models import Synthase
 from synthaser.ncbi import CDSearch, efetch_sequences
-from synthaser.results import ResultParser, parse_fasta
-
-logging.basicConfig(level=logging.INFO)
-log = logging.getLogger(__name__)
+from synthaser.results import ResultParser
 
 
 class Figure:
@@ -44,6 +41,7 @@ class Figure:
         "R": "#9933ff",
         "C": "#393989",
         "A": "#56157F",
+        "E": "#FFA500",
     }
 
     def __init__(self, synthases=None, colours=None):
@@ -113,7 +111,7 @@ class Figure:
         for key, value in colours.items():
             if key not in self.colours:
                 raise KeyError(f"Invalid domain '{key}'")
-            if not _validate_colour(value):
+            if not validate_colour(value):
                 raise ValueError(f"'{key}' is not a valid hex code")
             self.colours[key] = value
 
@@ -269,7 +267,7 @@ class Figure:
     ):
         """Build SVG representation of one synthase.
 
-        Length is determined by the supplied scale factor. Then, pairs of X and Y coordinates
+        Length is determined by the supplied scale factor. Then, (x, y) coordinates
         are calculated to represent each point in the synthase arrow. Finally, an SVG
         polygon feature is built with extra information above in a text feature, e.g.
 
@@ -291,7 +289,7 @@ class Figure:
         ...     domains=[Domain(type='KS', start=50, end=100)],
         ... )
 
-        The generated polygon will be:
+        The generated polygon will be (equivalent to):
 
         >>> figure.generate_synthase_polygon(synthase)
         <text dominant-baseline="hanging" font-size="12">synthase, 100aa, KS</text>'
@@ -438,7 +436,6 @@ class Figure:
         offset = 3
 
         for subtype, synthases in self.iterate_synthase_types():
-            log.info("Subtype=%s, %i synthases", subtype, len(synthases))
             block, height = self.build_polygon_block(
                 subtype,
                 synthases,
@@ -473,6 +470,8 @@ class Figure:
 
     @classmethod
     def _local_cdsearch(cls, query_file, results_file=None, **kwargs):
+        """Launch a new CD-Search run from a query file.
+        """
         cd, rp = CDSearch(), ResultParser()
         if not results_file:
             response = cd.search(query_file, **kwargs)
@@ -484,6 +483,7 @@ class Figure:
 
     @classmethod
     def _remote_cdsearch(cls, query_ids, **kwargs):
+        """Launch a new CD-Search run from a collection of query IDs."""
         cd, rp = CDSearch(), ResultParser()
         sequences = efetch_sequences(query_ids)
         response = cd.search(query_ids=query_ids, **kwargs)
@@ -509,10 +509,8 @@ class Figure:
             Figure built from the CDSearch query.
         """
         if query_file:
-            log.info("Starting new CD-Search run on %s", query_file)
             return cls._local_cdsearch(query_file, results_file=results_file, **kwargs)
         elif query_ids:
-            log.info("Starting new CD-Search run on %s", query_ids)
             return cls._remote_cdsearch(query_ids, **kwargs)
         else:
             raise ValueError("Expected query_file or query_ids")
@@ -529,11 +527,20 @@ class Figure:
         sequences : dict
             A pre-populated dictionary containing sequences corresponding to the
             Synthases in this objects `synthases` attribute.
+
+        Raises
+        ------
+        ValueError
+            If no sequences could be obtained (i.e. `sequences` is empty).
         """
         if ncbi:
             sequences = efetch_sequences(self.headers)
-        elif query_handle and not sequences:
-            sequences = parse_fasta(query_handle)
+        elif query_handle:
+            sequences = fasta.parse(query_handle)
+
+        if not sequences:
+            raise ValueError("No sequences were obtained")
+
         for header, sequence in sequences.items():
             try:
                 self[header].sequence = sequence
@@ -543,7 +550,7 @@ class Figure:
                 ) from exc
 
 
-def _validate_colour(colour):
+def validate_colour(colour):
     """Check that a supplied colour is a valid hex code."""
     hex_regex = re.compile(r"^#([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$")
     if hex_regex.search(colour):
