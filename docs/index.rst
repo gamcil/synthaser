@@ -11,3 +11,4 @@ Contents:
     figure
     ncbi
     results
+    fasta
