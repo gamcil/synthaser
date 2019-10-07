@@ -69,11 +69,98 @@ class ResultParser:
         ],
         "DH": ["PKS_DH", "PS-DH"],
         "PT": ["PT_fungal_PKS"],
-        "ACP": ["PKS_PP", "PP-binding", "AcpP"],
+        "ACP": ["PKS_PP", "PP-binding", "AcpP", "AcpS", "acpS", "ACPS"],
         "SAT": ["SAT"],
         "C": ["Condensation"],
         "A": ["A_NRPS", "AMP-binding"],
         "E": ["NRPS-para261"],
+        "cAT": ["Carn_acyltransf"],
+        "Ox": ["mcbC-like_oxidoreductase"],  # NRPS oxydation domain
+        "KAT": ["RimI"],  # N-epsilon-Lysine acetyltransferase
+    }
+
+    pssm_lengths = {
+        "PKS_KS": 298,
+        "PKS": 421,
+        "CLF": 399,
+        "KAS_I_II": 406,
+        "CHS_like": 361,
+        "KAS_III": 320,
+        "PKS_AT": 298,
+        "Acyl_transf_1": 319,
+        "PKS_ER": 287,
+        "enoyl_red": 293,
+        "KR": 180,
+        "PKS_KR": 287,
+        "Thioesterase": 224,
+        "Aes": 312,
+        "Thioester-redct": 367,
+        "SDR_e1": 290,
+        "Methyltransf_11": 95,
+        "Methyltransf_12": 98,
+        "Methyltransf_23": 162,
+        "Methyltransf_25": 97,
+        "Methyltransf_31": 150,
+        "AdoMet_MTases": 107,
+        "PKS_DH": 167,
+        "PS-DH": 289,
+        "PT_fungal_PKS": 324,
+        "PKS_PP": 86,
+        "PP-binding": 67,
+        "AcpP": 80,
+        "AcpS": 127,
+        "acpS": 125,
+        "ACPS": 104,
+        "SAT": 239,
+        "Condensation": 455,
+        "A_NRPS": 444,
+        "AMP-binding": 361,
+        "NRPS-para261": 153,
+        "Carn_acyltransf": 575,
+        "mcbC-like_oxidoreductase": 180,
+        "RimI": 177,
+    }
+
+    bitscore_cutoffs = {
+        "PKS_KS": 241.079,
+        "PKS": 167.35,
+        "CLF": 503.431,
+        "KAS_I_II": 285.201,
+        "CHS_like": 242.515,
+        "KAS_III": 212.4,
+        "PKS_AT": 201.477,
+        "Acyl_transf_1": 342.53,
+        "PKS_ER": 250.768,
+        "enoyl_red": 129.997,
+        "KR": 149.632,
+        "PKS_KR": 83.3005,
+        "Thioesterase": 157.139,
+        "Aes": 59.5636,
+        "Thioester-redct": 305.493,
+        "SDR_e1": 229.845,
+        "Methyltransf_11": 53.8265,
+        "Methyltransf_12": 40.8165,
+        "Methyltransf_23": 61.2786,
+        "Methyltransf_25": 34.8626,
+        "Methyltransf_31": 67.449,
+        "AdoMet_MTases": 29.3203,
+        "PKS_DH": 76.8814,
+        "PS-DH": 128.631,
+        "PT_fungal_PKS": 202.466,
+        "PKS_PP": 33.3777,
+        "PP-binding": 28.2759,
+        "AcpP": 26.8736,
+        "AcpS": 88.0777,
+        "acpS": 87.108,
+        "ACPS": 31.8159,
+        "SAT": 129.59,
+        "Condensation": 345.862,
+        "A_NRPS": 356.838,
+        "AMP-binding": 185.114,
+        "NRPS-para261": 159.361,
+        "Carn_acyltransf": 255.925,
+        "mcbC-like_oxidoreductase": 62.4272,
+        "RimI": 43.8319,
     }
 
     special_rules = {
@@ -135,6 +222,14 @@ class ResultParser:
         ----------
         row : str
             Tab-separated row from a CDSearch results file.
+        coverage_cutoff : int
+            Minimum percent coverage to save a conserved domain hit. This is multiplied
+            by the PSSM length defined by NCBI and then checked against the actual
+            length of the given hit.
+        bitscore_cutoff : int
+            Percent multiplier for determining bitscore cutoff. The PSSM threshold
+            bitscore, as calculated by NCBI, is multiplied by this value and is then
+            checked against the bitscore of the hit.
 
         Returns
         -------
@@ -145,7 +240,7 @@ class ResultParser:
         ValueError
             If the domain in this row is not in the DOMAINS dictionary.
         """
-        _, _, _, start, end, evalue, _, _, domain, *_ = row.split("\t")
+        _, _, _, start, end, evalue, bitscore, _, domain, *_ = row.split("\t")
         for domain_type, domains in self.domains.items():
             if domain not in domains:
                 continue
@@ -155,6 +250,7 @@ class ResultParser:
                 start=int(start),
                 end=int(end),
                 evalue=float(evalue),
+                bitscore=float(bitscore),
             )
         raise ValueError(f"'{domain}' not a synthaser key domain")
 
@@ -247,22 +343,91 @@ class ResultParser:
 
     def new_synthase(self, name, domains, sequence=""):
         """Instantiate and classify a new Synthase object."""
+        domains = self.filter_domains(domains)
+
+        if not domains:
+            log.error("No domains remain after filtering for %s", name)
+            return
+
         synthase = Synthase(
             header=name, sequence=sequence, domains=self.filter_domains(domains)
         )
-        classify.classify(synthase)
+        try:
+            classify.classify(synthase)
+        except ValueError:
+            print(f"Failed to classify {synthase}")
         return synthase
 
+    def detect_fragmented_domain(self, one, two, coverage_pct=0.5, tolerance_pct=0.1):
+        """Detect if two adjacent domains are likely a single domain.
+
+        This is useful in cases where a domain is detected with multiple small hits. For
+        example, an NRPS may have two adjacent condensation (C) domain hits that are
+        both individually too small and low-scoring, but should likely just be merged.
+
+        If two hits are close enough together, such that the distance between the start
+        of the first and end of the second is within some tolerance (default +-10%) of the
+        total length of a domains PSSM, this function will return True.
+        """
+        pssm_length = self.pssm_lengths[one.domain]
+        coverage = pssm_length * coverage_pct
+        tolerance = pssm_length * tolerance_pct
+        one_length, two_length = len(one), len(two)
+
+        return (
+            one_length < coverage
+            and two_length < coverage
+            and pssm_length - tolerance
+            <= two.end - one.start
+            <= pssm_length + tolerance
+            and one_length + two_length > coverage
+        )
+
     def filter_domains(self, domains):
-        """Filter overlapping Domain objects and test special rules."""
-        return [
-            self.apply_special_rules(group) for group in group_overlapping_hits(domains)
+        """Filter overlapping Domain objects and test special rules.
+
+        Special rules are tested again here, in case they are missed within overlap
+        groups. For example, the NRPS-para261 domain is not always entirely contained by
+        a condensation domain, so should be caught by this pass.
+        """
+        filtered = [
+            self.filter_domain_group(group) for group in group_overlapping_hits(domains)
         ]
 
-    def apply_special_rules(self, group):
-        """Test an overlapping Domain group for special rules.
+        i, total = 1, len(filtered)
+        while i < total:
+            if i + 1 == total:
+                break
+            previous, current = filtered[i - 1 : i + 1]
 
-        This function uses the rules stored in `special_rules`, which are lambdas that
+            # When domains are likely together, e.g. two small C domain hits right next
+            # to each other
+            if previous.domain == current.domain and self.detect_fragmented_domain(
+                previous, current
+            ):
+                previous.end = current.end
+                del filtered[i]
+                continue
+
+            for new_type, rule in self.special_rules.items():
+                if rule(previous, current):
+                    previous.type = new_type
+                    del filtered[i]
+                    break
+            i += 1
+
+        # Final filter, get rid of any obviously wrong, small hits; do here, not when
+        # parsing table, so we don't discard potentially fragmented single domains
+        return [
+            domain
+            for domain in filtered
+            if len(domain) > 0.2 * self.pssm_lengths[domain.domain]
+        ]
+
+    def filter_domain_group(self, group):
+        """Select the best domain from a collection of overlapping domains.
+
+        This function tests rules stored in `special_rules`, which are lambdas that
         take two variables. It sorts the group by e-value, then tests each rule using
         the container (first, best scoring group) against all other Domains in the
         group.
@@ -282,7 +447,7 @@ class ResultParser:
             the type of this `Domain` will be set to that rule (e.g. Condensation ->
             Epimerization).
         """
-        container, *_group = sorted(group, key=attrgetter("evalue"))
+        container, *_group = sorted(group, key=lambda d: d.evalue)
         for domain in _group:
             for new_type, rule in self.special_rules.items():
                 if rule(container, domain):
@@ -301,8 +466,12 @@ def parse_results(results_file):
         return rp.parse(results)
 
 
-def hits_overlap(a, b, threshold=0.9):
+def hits_overlap(a, b, threshold=0.2):
     """Return True if Domain overlap is greater than threshold * domain size.
+
+    The specified domains typically should share no overlap, tending to be discrete with
+    inter-domain gaps. Subsequently, the default threshold is set low. However, it is
+    not 0, as to accomodate SOME level of overlap.
 
     Parameters
     ----------
@@ -327,7 +496,7 @@ def hits_overlap(a, b, threshold=0.9):
     return overlap >= a_threshold or overlap >= b_threshold
 
 
-def group_overlapping_hits(domains, threshold=0.9):
+def group_overlapping_hits(domains, threshold=0.2):
     """Iterator that groups Domain objects based on overlapping locations.
 
     Parameters
