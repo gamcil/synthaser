@@ -196,6 +196,8 @@ class Figure:
     ):
         """Set visualisation parameters on this Figure."""
         for key, value in locals().items():
+            if not value:
+                continue
             self.config[key] = value
 
     def calculate_scale_factor(self):
