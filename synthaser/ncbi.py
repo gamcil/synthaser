@@ -80,7 +80,7 @@ import requests
 
 from synthaser import fasta
 
-log = logging.getLogger(__name__)
+LOG = logging.getLogger(__name__)
 
 
 CDSEARCH_URL = "https://www.ncbi.nlm.nih.gov/Structure/bwrpsb/bwrpsb.cgi?"
@@ -154,18 +154,18 @@ def _search_query_ids(ids):
 def _search(query_ids=None, query_file=None):
     """Launch new search with either query IDs or file, then return assigned CDSID."""
     if query_file and not query_ids:
-        log.info("Launching new CDSearch run with: %s", query_file)
+        LOG.info("Launching new CDSearch run with: %s", query_file)
         with open(query_file) as handle:
             response = _search_query_file(handle)
     elif query_ids:
-        log.info("Launching new CDSearch run on IDs: %s", query_ids)
+        LOG.info("Launching new CDSearch run on IDs: %s", query_ids)
         response = _search_query_ids(query_ids)
     else:
         raise ValueError("A query must be specified with query_file OR query_ids")
     try:
         return re.search(r"#cdsid\t(.+?)\n", response.text).group(1)
     except AttributeError:
-        log.exception("Search failed; no search ID returned")
+        LOG.exception("Search failed; no search ID returned")
         raise
 
 
@@ -294,13 +294,13 @@ def _retrieve_results(cdsid, max_retries=-1, delay=20):
             previous = current + wait
         else:
             previous = current
-        log.info("Checking search status...")
+        LOG.info("Checking search status...")
         response = _check_status(cdsid)
         if response:
-            log.info("Search successfully completed!")
+            LOG.info("Search successfully completed!")
             break
         if max_retries > 0 and retries == max_retries:
-            log.error("Maximum retry limit (%i) exceeded, breaking", max_retries)
+            LOG.error("Maximum retry limit (%i) exceeded, breaking", max_retries)
             break
         retries += 1
     if not response:
@@ -379,8 +379,8 @@ def CDSearch(
     if not cdsid:
         cdsid = _search(query_ids=query_ids, query_file=query_file)
 
-    log.info("Run ID: %s", cdsid)
-    log.info("Polling NCBI for results...")
+    LOG.info("Run ID: %s", cdsid)
+    LOG.info("Polling NCBI for results...")
     results = _retrieve_results(cdsid, delay=delay, max_retries=max_retries)
 
     SEARCH_HISTORY.append(
@@ -388,7 +388,7 @@ def CDSearch(
     )
 
     if output:
-        log.info("Writing results to %s", output)
+        LOG.info("Writing results to %s", output)
         with open(output, "w") as handle:
             handle.write(results.text)
 

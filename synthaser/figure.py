@@ -55,7 +55,7 @@ from synthaser import fasta, results
 from synthaser.models import Synthase
 from synthaser.ncbi import CDSearch, efetch_sequences
 
-log = logging.getLogger(__name__)
+LOG = logging.getLogger(__name__)
 
 
 class Figure:
@@ -619,7 +619,7 @@ class Figure:
             try:
                 self[header].sequence = sequence
             except KeyError:
-                log.error("Could not find match for %s, skipping", header)
+                LOG.error("Could not find match for %s, skipping", header)
 
 
 def validate_colour(colour):

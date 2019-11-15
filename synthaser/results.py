@@ -66,7 +66,7 @@ from synthaser import classify
 from synthaser.models import Domain, Synthase
 
 
-log = logging.getLogger(__name__)
+LOG = logging.getLogger(__name__)
 
 
 DOMAINS = {
@@ -312,12 +312,12 @@ def _synthases_from_results(results, **kwargs):
     for name, domains in results.items():
         domains = _filter_domains(domains, **kwargs)
         if not domains:
-            log.error("No domains remain after filtering for %s", name)
+            LOG.error("No domains remain after filtering for %s", name)
         synthase = Synthase(header=name, domains=domains)
         try:
             classify.classify(synthase)
         except ValueError:
-            log.error("Failed to classify %s", name)
+            LOG.error("Failed to classify %s", name)
         synthases.append(synthase)
     return synthases
 
