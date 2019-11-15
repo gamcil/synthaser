@@ -1,16 +1,62 @@
 #!/usr/bin/env python3
 
+"""
+This module handles the generation of the SVG figure.
+
+All functionality is available through use of the `Figure` class, which can be
+instantiated simply with a collection of `models.Synthase` instances:
+
+>>> from synthaser.models import Synthase
+>>> from synthase.figure import Figure
+>>> synthases = [
+...     models.Synthase(...),
+...     models.Synthase(...),
+...     models.Synthase(...),
+...     ...
+...     ]
+>>> figure = Figure(synthases)
+
+In order to generate the figure, the object needs to know the lengths of each synthase
+sequence. To do this, add the sequences using `add_query_sequences`:
+
+>>> with open('synthases.fa') as handle:
+>>>     figure.add_query_sequences(handle)
+
+Now, we can create the SVG:
+
+>>> svg = figure.visualise()
+>>> with open('synthases.svg', 'w') as handle:
+...     handle.write(svg)
+
+Internally, the `Figure` class calls a number of methods to assemble an SVG-format
+string, which is then written to the file.
+
+Synthases are drawn as `<polygon>` elements, which are scaled to the correct width given
+the document width and length of the largest sequence in the figure.
+
+The domain colouring is done via `<linearGradient>` elements, which define colour fill
+blocks based on the start and end of each domain object. This means that the shapes can
+be resized after generating the figure (e.g. in InkScape), and the domain colours will always
+correctly correspond to the synthase length.
+
+The colour scheme can be manipulated by changing the `colours` attribute, which is a
+dictionary mapping `Domain` type to hexadecimal colour codes.
+"""
+
 
 import json
+import logging
 import re
 
 from itertools import groupby
 from operator import attrgetter
 
-from synthaser import fasta
+from synthaser import fasta, results
 from synthaser.models import Synthase
 from synthaser.ncbi import CDSearch, efetch_sequences
-from synthaser.results import ResultParser
+
+logging.basicConfig(level=logging.INFO)
+log = logging.getLogger(__name__)
 
 
 class Figure:
@@ -42,13 +88,28 @@ class Figure:
         "C": "#393989",
         "A": "#56157F",
         "E": "#FFA500",
+        "cAT": "#FF6600FF",
     }
 
-    def __init__(self, synthases=None, colours=None):
+    default_config = {
+        "arrow_height": 12,
+        "arrow_spacing": 4,
+        "block_spacing": 16,
+        "header_fsize": 15,
+        "info_fsize": 12,
+        "width": 600,
+    }
+
+    def __init__(self, synthases=None, colours=None, config=None):
         self.synthases = synthases if synthases else []
+
         self.colours = self.default_colours.copy()
         if colours:
             self.set_colours(colours)
+
+        self.config = self.default_config.copy()
+        if config:
+            self.set_config(config)
 
     def __repr__(self):
         return "\n\n".join(
@@ -70,6 +131,15 @@ class Figure:
             if synthase.header == key:
                 return synthase
         raise KeyError(f"No synthase with header '{key}'")
+
+    def get_by(self, attribute, key):
+        if attribute not in ("type", "subtype"):
+            raise ValueError("Expected 'type' or 'subtype'")
+        return [
+            synthase
+            for synthase in self.synthases
+            if getattr(synthase, attribute) == key
+        ]
 
     @property
     def headers(self):
@@ -115,7 +185,20 @@ class Figure:
                 raise ValueError(f"'{key}' is not a valid hex code")
             self.colours[key] = value
 
-    def calculate_scale_factor(self, width):
+    def set_config(
+        self,
+        arrow_height=None,
+        arrow_spacing=None,
+        block_spacing=None,
+        header_fsize=None,
+        info_fsize=None,
+        width=None,
+    ):
+        """Set visualisation parameters on this Figure."""
+        for key, value in locals().items():
+            self.config[key] = value
+
+    def calculate_scale_factor(self):
         """Calculate the scale factor for drawing synthases.
 
         The scale factor is calculated such that the largest Synthase in the Figure will
@@ -159,10 +242,10 @@ class Figure:
         """
         if any(not synthase.sequence for synthase in self.synthases):
             raise ValueError("Synthases in this Figure have no sequences")
-        if width < 0:
+        if self.config["width"] < 0:
             raise ValueError("Width must be greater than 0")
         largest = max(self.synthases, key=attrgetter("sequence_length"))
-        return (width - 2) / largest.sequence_length
+        return (self.config["width"] - 2) / largest.sequence_length
 
     def sort_synthases_by_length(self):
         """Sort Synthase objects by length of their sequences or domain architecture.
@@ -262,9 +345,7 @@ class Figure:
             "".format(synthase.header, "\n".join(stops))
         )
 
-    def generate_synthase_polygon(
-        self, synthase, scale_factor=1, info_fsize=12, arrow_height=14
-    ):
+    def generate_synthase_polygon(self, synthase, scale_factor=1):
         """Build SVG representation of one synthase.
 
         Length is determined by the supplied scale factor. Then, (x, y) coordinates
@@ -327,9 +408,9 @@ class Figure:
 
         sequence_length = len(synthase.sequence)
         scaled_length = scale_factor * sequence_length
-        info_fsize_scaled = info_fsize * 0.9
-        bottom_y = info_fsize_scaled + arrow_height
-        middle_y = info_fsize_scaled + arrow_height / 2
+        info_fsize_scaled = self.config["info_fsize"] * 0.9
+        bottom_y = info_fsize_scaled + self.config["arrow_height"]
+        middle_y = info_fsize_scaled + self.config["arrow_height"] / 2
 
         ax, ay = 0, info_fsize_scaled
         bx, by = scaled_length - 10, info_fsize_scaled
@@ -341,22 +422,14 @@ class Figure:
         information = f"{synthase.header}, {sequence_length}aa, {synthase.architecture}"
 
         return (
-            f'<text dominant-baseline="hanging" font-size="{info_fsize}">{information}</text>'
+            f'<text dominant-baseline="hanging" font-size="{self.config["info_fsize"]}"'
+            f">{information}</text>"
             f'<polygon id="{synthase.header}" points="{points}"'
             f' fill="url(#{synthase.header}_doms)" stroke="black"'
             ' stroke-width="1.5"/>'
         )
 
-    def build_polygon_block(
-        self,
-        subtype,
-        synthases,
-        scale_factor,
-        arrow_spacing,
-        arrow_height,
-        info_fsize,
-        header_fsize,
-    ):
+    def build_polygon_block(self, subtype, synthases, scale_factor):
         """Generate the SVG for a block of Synthase objects of a specified subtype.
 
         See Figure.visualise() for description of other parameters.
@@ -380,30 +453,24 @@ class Figure:
 
         block = (
             '<text dominant-baseline="hanging"'
-            f' font-size="{header_fsize}"'
+            f' font-size="{self.config["header_fsize"]}"'
             f' font-weight="bold">{subtype}</text>'
         )
-        offset = header_fsize
+        offset = self.config["header_fsize"]
         for synthase in synthases:
             polygon = self.generate_synthase_polygon(
-                synthase,
-                scale_factor=scale_factor,
-                info_fsize=info_fsize,
-                arrow_height=arrow_height,
+                synthase, scale_factor=scale_factor
             )
             block += f'\n<g transform="translate(1,{offset})">\n{polygon}\n</g>'
-            offset += info_fsize + arrow_height + 4 + arrow_spacing
+            offset += (
+                self.config["info_fsize"]
+                + self.config["arrow_height"]
+                + 4
+                + self.config["arrow_spacing"]
+            )
         return block, offset
 
-    def visualise(
-        self,
-        arrow_height=12,
-        arrow_spacing=4,
-        block_spacing=16,
-        header_fsize=15,
-        info_fsize=12,
-        width=600,
-    ):
+    def visualise(self):
         """Construct the SVG figure.
 
         This function wraps all the necessary methods in the Figure class to generate
@@ -430,31 +497,23 @@ class Figure:
         str
             Final SVG figure.
         """
-        scale_factor = self.calculate_scale_factor(width)
+        scale_factor = self.calculate_scale_factor()
 
         blocks = ""
         offset = 3
 
         for subtype, synthases in self.iterate_synthase_types():
-            block, height = self.build_polygon_block(
-                subtype,
-                synthases,
-                scale_factor,
-                arrow_spacing,
-                arrow_height,
-                info_fsize,
-                header_fsize,
-            )
+            block, height = self.build_polygon_block(subtype, synthases, scale_factor)
             blocks += f'<g transform="translate(0,{offset})">\n{block}\n</g>'
-            offset += height + block_spacing
+            offset += height + self.config["block_spacing"]
 
         gradients = [
             self.generate_synthase_gradient(synthase) for synthase in self.synthases
         ]
 
         return '<svg width="{}" height="{}">\n{}\n{}\n</svg>'.format(
-            width,
-            offset - block_spacing - arrow_spacing - 4,
+            self.config["width"],
+            offset - self.config["block_spacing"] - self.config["arrow_spacing"] - 4,
             "\n".join(gradients),
             blocks,
         )
@@ -472,22 +531,26 @@ class Figure:
     def _local_cdsearch(cls, query_file, results_file=None, **kwargs):
         """Launch a new CD-Search run from a query file.
         """
-        cd, rp = CDSearch(), ResultParser()
         if not results_file:
-            response = cd.search(query_file, **kwargs)
-            with open(query_file) as handle:
-                return cls(rp.parse(response.text.split("\n"), query_file=handle))
+            response = CDSearch(query_file=query_file, **kwargs)
+            figure = cls(results.parse(response.text.split("\n")))
         else:
-            with open(results_file) as results, open(query_file) as queries:
-                return cls(rp.parse(results, query_handle=queries))
+            with open(results_file) as _results:
+                figure = cls(results.parse(_results))
+
+        with open(query_file) as handle:
+            figure.add_query_sequences(handle)
+
+        return figure
 
     @classmethod
     def _remote_cdsearch(cls, query_ids, **kwargs):
         """Launch a new CD-Search run from a collection of query IDs."""
-        cd, rp = CDSearch(), ResultParser()
         sequences = efetch_sequences(query_ids)
-        response = cd.search(query_ids=query_ids, **kwargs)
-        return cls(rp.parse(response.text.split("\n"), sequences=sequences))
+        response = CDSearch(query_ids=query_ids, **kwargs)
+        figure = cls(results.parse(response.text.split("\n")))
+        figure.add_query_sequences(sequences=sequences)
+        return figure
 
     @classmethod
     def from_cdsearch(
@@ -497,6 +560,16 @@ class Figure:
 
         Internally calls `_local_cdsearch` or `_remote_cdsearch` classmethods if
         query_file or query_ids is specified, respectively.
+
+        For example:
+
+        >>> figure = Figure.from_cdsearch(query_ids=['Q5BEJ6.1'])
+        >>> figure
+        HR-PKS
+        ------
+        Q5BEJ6.1    SAT-KS-AT-PT-ACP-MT-TR
+        >>> figure['Q5BEJ6.1'].sequence
+        'MTRASASGSGHEASTVFLFGPHVGTFTKASMDKLVRPLSQSPQRD...'
 
         Parameters
         ----------
@@ -544,10 +617,8 @@ class Figure:
         for header, sequence in sequences.items():
             try:
                 self[header].sequence = sequence
-            except KeyError as exc:
-                raise KeyError(
-                    f"Could not match '{header}' to synthase in results"
-                ) from exc
+            except KeyError:
+                log.error("Could not find match for %s, skipping", header)
 
 
 def validate_colour(colour):
