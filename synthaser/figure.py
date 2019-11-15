@@ -55,7 +55,6 @@ from synthaser import fasta, results
 from synthaser.models import Synthase
 from synthaser.ncbi import CDSearch, efetch_sequences
 
-logging.basicConfig(level=logging.INFO)
 log = logging.getLogger(__name__)
 
 

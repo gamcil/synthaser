@@ -80,7 +80,6 @@ import requests
 
 from synthaser import fasta
 
-logging.basicConfig(level=logging.INFO)
 log = logging.getLogger(__name__)
 
 
@@ -210,7 +209,9 @@ def _check_status(cdsid):
     ValueError
         When a status code of 1, 2, 4 or 5 is returned from the request.
     """
-    response = requests.get(CDSEARCH_URL, params={"cdsid": cdsid})
+    response = requests.get(
+        CDSEARCH_URL, params={"cdsid": cdsid, "dmode": "full", "tdata": "hits"}
+    )
     code = re.search(r"#status\t([012345])[\n\t]", response.text).group(1)
     if code == "0":
         if response.text.endswith("Superfamily\n"):
@@ -375,7 +376,8 @@ def CDSearch(
 
     Then, future searches will use the updated value.
     """
-    cdsid = _search(query_ids=query_ids, query_file=query_file)
+    if not cdsid:
+        cdsid = _search(query_ids=query_ids, query_file=query_file)
 
     log.info("Run ID: %s", cdsid)
     log.info("Polling NCBI for results...")
