@@ -4,6 +4,7 @@ CLI, main routine
 
 import argparse
 import logging
+import sys
 
 from synthaser import figure, ncbi
 
@@ -39,8 +40,6 @@ def synthaser(
 
     LOG.info("Starting synthaser")
 
-    fig = figure.Figure.from_cdsearch(query_file=query_file, query_ids=query_ids)
-
     ncbi.set_search_params(
         db=db,
         smode=smode,
@@ -51,6 +50,8 @@ def synthaser(
         maxhit=maxhit,
         dmode=dmode,
     )
+
+    fig = figure.Figure.from_cdsearch(query_file=query_file, query_ids=query_ids)
 
     fig.set_config(
         arrow_height=arrow_height,
@@ -190,5 +191,30 @@ def get_arguments():
     return parser.parse_args()
 
 
+def main():
+    args = get_arguments(sys.argv[1:])
+
+    synthaser(
+        query_file=args.query_file,
+        query_ids=args.query_ids,
+        svg_file=args.svg_file,
+        json_file=args.json_file,
+        db=args.db,
+        smode=args.smode,
+        useid1=args.useid1,
+        compbasedadj=args.compbasedadj,
+        filter=args.filter,
+        evalue=args.evalue,
+        maxhit=args.maxhit,
+        dmode=args.dmode,
+        arrow_height=args.arrow_height,
+        arrow_spacing=args.arrow_spacing,
+        block_spacing=args.block_spacing,
+        header_fsize=args.header_fsize,
+        info_fsize=args.info_fsize,
+        width=args.width,
+    )
+
+
 if __name__ == "__main__":
-    parser = get_arguments()
+    main()
