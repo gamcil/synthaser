@@ -13,12 +13,7 @@ import pytest
 
 from synthaser.models import Synthase, Domain
 from synthaser.figure import Figure
-from synthaser.results import (
-    ResultParser,
-    parse_results,
-    hits_overlap,
-    group_overlapping_hits,
-)
+from synthaser import results
 
 
 TEST_DIR = Path(__file__).resolve().parent
@@ -31,7 +26,7 @@ TEST_DIR = Path(__file__).resolve().parent
 def test_hits_overlap(a, b, threshold, result):
     dom_a = Domain(start=a[0], end=a[1])
     dom_b = Domain(start=b[0], end=b[1])
-    assert hits_overlap(dom_a, dom_b, threshold=threshold) == result
+    assert results._hits_overlap(dom_a, dom_b, threshold=threshold) == result
 
 
 def test_group_overlapping_hits():
@@ -43,48 +38,14 @@ def test_group_overlapping_hits():
         Domain(start=180, end=300),
     ]
 
-    groups = [group for group in group_overlapping_hits(domains)]
+    groups = [group for group in results._group_overlapping_hits(domains)]
 
     assert groups == [domains[0:2], [domains[2]], domains[3:]]
 
 
-@pytest.fixture
-def resultparser():
-    return ResultParser()
-
-
-def test_ResultParser_set_domains_input(resultparser):
-    with pytest.raises(TypeError):
-        resultparser.set_domains(["list"])
-    with pytest.raises(ValueError):
-        resultparser.set_domains({"invalid_key": 1})
-    with pytest.raises(TypeError):
-        resultparser.set_domains({"KS": "not list or tuple"})
-    with pytest.raises(TypeError):
-        resultparser.set_domains({"KS": ["asd", 2, 3]})
-
-
-def test_ResultParser_set_domains(resultparser):
-    domains = {
-        "KS": ["PKS_KS", "PKS", "test_KS"],  # duplication
-        "AT": ["test_AT"],  # purely new domain
-    }
-    resultparser.set_domains(domains)
-    assert resultparser.domains["KS"] == [
-        "PKS_KS",
-        "PKS",
-        "CLF",
-        "KAS_I_II",
-        "CHS_like",
-        "KAS_III",
-        "test_KS",
-    ]
-    assert resultparser.domains["AT"] == ["PKS_AT", "Acyl_transf_1", "test_AT"]
-
-
-def test_ResultParser_parse_row(resultparser):
-    row = "\t\t\t0\t100\t0\t\t\tPKS_KS\t\t"
-    domain = resultparser.parse_row(row)
+def test_ResultParser_parse_row():
+    row = "\t\t\t0\t100\t0\t0\t\tPKS_KS\t\t"
+    domain = results._domain_from_row(row)
     assert domain.start == 0
     assert domain.end == 100
     assert domain.evalue == 0.0
@@ -92,10 +53,10 @@ def test_ResultParser_parse_row(resultparser):
     assert domain.domain == "PKS_KS"
 
 
-def test_ResultParser_parse_row_not_key_domain(resultparser):
-    row = "\t\t\t0\t100\t\t\t\tTESTING\t\t"
+def test_ResultParser_parse_row_not_key_domain():
+    row = "\t\t\t0\t100\t0\t\t\tTESTING\t\t"
     with pytest.raises(ValueError):
-        resultparser.parse_row(row)
+        results._domain_from_row(row)
 
 
 @pytest.fixture
@@ -125,7 +86,7 @@ def anid():
 
 
 @pytest.fixture
-def results():
+def test_results():
     return {
         "one": [
             Domain(type="KS", domain="PKS_KS", start=0, end=100, evalue=0.0),
@@ -135,94 +96,52 @@ def results():
     }
 
 
-def test_ResultParser_parse_table(resultparser, tmp_path, results):
+def test_parse_cdsearch_table(tmp_path, test_results):
     results_file = tmp_path / "results.tsv"
     results_file.write_text(
-        "Q#1 - >one\t\t\t0\t100\t0\t\t\tPKS_KS\t\t\n"
-        "Q#1 - >one\t\t\t0\t100\t5.11327e-141\t\t\tCLF\t\t\n"
-        "Q#1 - >one\t\t\t0\t100\t5.11327e-141\t\t\tNot_a_key_domain\t\t\n"
-        "Q#2 - >two\t\t\t0\t100\t0\t\t\tA_NRPS\t\t\n"
+        "Q#1 - >one\t\t\t0\t100\t0\t0\t\tPKS_KS\t\t\n"
+        "Q#1 - >one\t\t\t0\t100\t5.11327e-141\t0\t\tCLF\t\t\n"
+        "Q#1 - >one\t\t\t0\t100\t5.11327e-141\t0\t\tNot_a_key_domain\t\t\n"
+        "Q#2 - >two\t\t\t0\t100\t0\t0\t\tA_NRPS\t\t\n"
     )
     with results_file.open() as r:
-        assert resultparser.parse_table(r) == results
+        assert results._parse_cdsearch_table(r) == test_results
 
 
-def test_ResultParser_build_synthases(resultparser, results):
-    sequences = {"one": "ACGT"}
-    assert resultparser.build_synthases(results, sequences=sequences) == [
-        Synthase(header="one", type="Type I PKS", subtype="PKS-like", sequence="ACGT"),
+def test_synthases_from_results(test_results):
+    assert results._synthases_from_results(test_results) == [
+        Synthase(header="one", type="Type I PKS", subtype="PKS-like"),
         Synthase(header="two", type="NRPS", subtype="NRPS-like"),
     ]
 
 
-@pytest.mark.parametrize(
-    "header,sequence,domains,result",
-    [
-        (
-            "one",
-            "ACGT",
-            [
-                Domain(type="KS", domain="PKS_KS", start=0, end=90, evalue=0.0),
-                Domain(type="KS", domain="PKS", start=0, end=100, evalue=1.0),
-                Domain(type="AT", domain="PKS_AT", start=100, end=200, evalue=0.0),
-            ],
-            Synthase(
-                header="one",
-                sequence="ACGT",
-                type="Type I PKS",
-                subtype="PKS-like",
-                domains=[
-                    Domain(type="KS", domain="PKS_KS", start=0, end=90, evalue=0.0),
-                    Domain(type="AT", domain="PKS_AT", start=100, end=200, evalue=0.0),
-                ],
-            ),
-        )
-    ],
-)
-def test_ResultParser_new_synthase(resultparser, header, sequence, domains, result):
-    assert resultparser.new_synthase(header, domains, sequence) == result
-
-
-def test_ResultParser_filter_domains(resultparser):
+def test_filter_domains():
     domains = [
-        Domain(type="C", start=0, end=100, evalue=1.0),
-        Domain(type="C", start=10, end=110, evalue=0.0),
-        Domain(type="E", start=80, end=100, evalue=0.1),
-        Domain(type="KS", start=90, end=200, evalue=0.0),
-        Domain(type="KS", start=100, end=200, evalue=1.0),
+        Domain(type="C", domain="Condensation", start=0, end=100, evalue=1.0),
+        Domain(type="C", domain="Condensation", start=10, end=110, evalue=0.0),
+        Domain(type="E", domain="NRPS-para261", start=80, end=100, evalue=0.1),
+        Domain(type="KS", domain="PKS", start=90, end=200, evalue=0.0),
+        Domain(type="KS", domain="PKS_KS", start=100, end=200, evalue=1.0),
     ]
-    assert resultparser.filter_domains(domains) == [
-        Domain(type="E", start=10, end=110, evalue=0.0),
-        Domain(type="KS", start=90, end=200, evalue=0.0),
+    assert results._filter_domains(domains) == [
+        Domain(type="E", domain="Condensation", start=10, end=110, evalue=0.0),
+        Domain(type="KS", domain="PKS", start=90, end=200, evalue=0.0),
     ]
 
 
-def test_ResultParser_apply_special_rules(resultparser):
-    domains = [
-        Domain(type="C", start=0, end=100, evalue=1.0),
-        Domain(type="C", start=10, end=110, evalue=0.0),
-        Domain(type="E", start=80, end=100, evalue=0.1),
-    ]
-    assert resultparser.apply_special_rules(domains[:2]) == Domain(
-        type="C", start=10, end=110, evalue=0.0
-    )
-    assert resultparser.apply_special_rules(domains) == Domain(
-        type="E", start=10, end=110, evalue=0.0
-    )
-
-
-def test_ResultParser_parse(resultparser, anid):
+def test_parse(anid):
     anid_tsv = TEST_DIR / "anid.tsv"
     with anid_tsv.open() as tsv:
-        anid_synthases = resultparser.parse(tsv)
+        anid_synthases = results.parse(tsv)
     anid_synthases.sort(key=attrgetter("header"))
     anid.synthases.sort(key=attrgetter("header"))
     assert anid_synthases == anid.synthases
 
 
 def test_parse_results(anid):
-    anid_tsv = str(TEST_DIR / "anid.tsv")
-    anid_synthases = parse_results(anid_tsv)
+    anid_tsv = TEST_DIR / "anid.tsv"
+    with anid_tsv.open() as tsv:
+        anid_synthases = results.parse(tsv)
     anid_synthases.sort(key=attrgetter("header"))
     anid.synthases.sort(key=attrgetter("header"))
     assert anid_synthases == anid.synthases

@@ -18,7 +18,7 @@ from synthaser.models import Domain, Synthase
     [
         ([Domain(type="KS"), Domain(type="KS")], "multi-modular PKS"),
         ([Domain(type="KS", domain="PKS")], "Type I PKS"),
-        ([Domain(type="KS", domain="CLF")], "Type II PKS"),
+        ([Domain(type="KS", domain="CLF")], "trans-AT PKS"),
         ([Domain(type="KS", domain="CHS_like")], "Type III PKS"),
     ],
 )

@@ -8,7 +8,6 @@ from pathlib import Path
 
 import pytest
 
-from synthaser import ncbi
 from synthaser.figure import Figure, validate_colour
 from synthaser.models import Synthase, Domain
 
@@ -124,11 +123,9 @@ def test_Figure_generate_synthase_polygon(figure, synthase):
             length and arrow_height.
     """
     # length=200, scale_factor=1, arrow_height=14, info_fsize=12
-    assert figure.generate_synthase_polygon(
-        synthase, scale_factor=1, arrow_height=14, info_fsize=12
-    ) == (
+    assert figure.generate_synthase_polygon(synthase, scale_factor=1) == (
         f'<text dominant-baseline="hanging" font-size="12">test, 200aa, KS-AT</text>'
-        f'<polygon id="test" points="0,10.8,190,10.8,200,17.8,190,24.8,0,24.8"'
+        f'<polygon id="test" points="0,10.8,190,10.8,200,16.8,190,22.8,0,22.8"'
         f' fill="url(#test_doms)" stroke="black"'
         ' stroke-width="1.5"/>'
     )
@@ -169,17 +166,22 @@ def test_Figure_get(figure):
     figure["hrpks1"]
 
 
+def test_Figure_scale_factor_negative_width(figure):
+    figure.config["width"] = -1
+    with pytest.raises(ValueError):
+        figure.calculate_scale_factor()
+
+
 @pytest.mark.parametrize("width,result", [(1000, 0.499), (500, 0.249)])
 def test_Figure_scale_factor(figure, width, result):
-    with pytest.raises(ValueError):
-        figure.calculate_scale_factor(-1)
-    assert figure.calculate_scale_factor(width) == result
+    figure.config["width"] = width
+    assert figure.calculate_scale_factor() == result
 
 
 def test_Figure_scale_factor_no_sequence(figure):
     figure.synthases[1].sequence = ""
     with pytest.raises(ValueError):
-        figure.calculate_scale_factor(100)
+        figure.calculate_scale_factor()
 
 
 def test_Figure_iterate_synthase_types(figure):
@@ -196,12 +198,10 @@ def test_Figure_iterate_synthase_types(figure):
 
 @pytest.fixture
 def anid():
-    """Returns a Figure from query FASTA and CDSearch results table in tests directory.
-    """
-    results = TEST_DIR / "anid.tsv"
-    fasta = TEST_DIR / "anid.faa"
-    figure = Figure.from_cdsearch(query_file=fasta, results_file=results)
-    return figure
+    """Returns a Figure from query FASTA and CDSearch results table in tests directory."""
+    return Figure.from_cdsearch(
+        query_file=TEST_DIR / "anid.faa", results_file=TEST_DIR / "anid.tsv"
+    )
 
 
 def test_Figure_from_cdsearch(anid):
@@ -228,12 +228,18 @@ def test_Figure_visualise(anid):
     assert anid.visualise() == svg
 
 
-def test_Figure_add_query_sequences(figure):
+def test_Figure_add_query_sequences_empty(figure):
     """Test adding amino acid sequences to the Figure."""
-    with pytest.raises(KeyError):
-        figure.add_query_sequences(sequences={"not_in_figure": "ACGT"})
     with pytest.raises(ValueError):
         figure.add_query_sequences(sequences={})
+
+
+def test_Figure_add_query_sequences_invalid(figure, caplog):
+    figure.add_query_sequences(sequences={"not_in_figure": "ACGT"})
+    assert "Could not find match" in caplog.records[-1].msg
+
+
+def test_Figure_add_query_sequences(figure):
     figure.add_query_sequences(sequences={"hrpks1": "ACGT", "nrps": "ACGT"})
     assert figure["hrpks1"].sequence == "ACGT"
     assert figure["nrps"].sequence == "ACGT"

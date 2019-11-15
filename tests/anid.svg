@@ -92,6 +92,10 @@
 <stop offset="75%" stop-color="#084BC6"/>
 <stop offset="78%" stop-color="#084BC6"/>
 <stop offset="78%" stop-color="white"/>
+<stop offset="80%" stop-color="white"/>
+<stop offset="80%" stop-color="#FF6600FF"/>
+<stop offset="99%" stop-color="#FF6600FF"/>
+<stop offset="99%" stop-color="white"/>
 </linearGradient>
 <linearGradient id="AN6791.2_doms" x1="0%" y1="0%" x2="100%" y2="0%">
 <stop offset="0%" stop-color="white"/>
@@ -734,7 +738,7 @@
 <text dominant-baseline="hanging" font-size="12">AN9217.2, 3165aa, KS-AT-DH-ER-KR-ACP</text><polygon id="AN9217.2" points="0,10.8,471.59541984732823,10.8,481.59541984732823,16.8,471.59541984732823,22.8,0,22.8" fill="url(#AN9217.2_doms)" stroke="black" stroke-width="1.5"/>
 </g>
 <g transform="translate(1,47)">
-<text dominant-baseline="hanging" font-size="12">AN3610.2, 2775aa, KS-AT-DH-ER-KR-ACP</text><polygon id="AN3610.2" points="0,10.8,412.2519083969466,10.8,422.2519083969466,16.8,412.2519083969466,22.8,0,22.8" fill="url(#AN3610.2_doms)" stroke="black" stroke-width="1.5"/>
+<text dominant-baseline="hanging" font-size="12">AN3610.2, 2775aa, KS-AT-DH-ER-KR-ACP-cAT</text><polygon id="AN3610.2" points="0,10.8,412.2519083969466,10.8,422.2519083969466,16.8,412.2519083969466,22.8,0,22.8" fill="url(#AN3610.2_doms)" stroke="black" stroke-width="1.5"/>
 </g>
 <g transform="translate(1,79)">
 <text dominant-baseline="hanging" font-size="12">AN6791.2, 2568aa, KS-AT-DH-MT-ER-KR-ACP</text><polygon id="AN6791.2" points="0,10.8,380.75419847328243,10.8,390.75419847328243,16.8,380.75419847328243,22.8,0,22.8" fill="url(#AN6791.2_doms)" stroke="black" stroke-width="1.5"/>
