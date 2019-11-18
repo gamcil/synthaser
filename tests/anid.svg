@@ -93,8 +93,8 @@
 <stop offset="78%" stop-color="#084BC6"/>
 <stop offset="78%" stop-color="white"/>
 <stop offset="80%" stop-color="white"/>
-<stop offset="80%" stop-color="#FF6600FF"/>
-<stop offset="99%" stop-color="#FF6600FF"/>
+<stop offset="80%" stop-color="#FF6600"/>
+<stop offset="99%" stop-color="#FF6600"/>
 <stop offset="99%" stop-color="white"/>
 </linearGradient>
 <linearGradient id="AN6791.2_doms" x1="0%" y1="0%" x2="100%" y2="0%">
