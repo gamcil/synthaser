@@ -2,6 +2,7 @@
 [![Build Status](https://travis-ci.org/gamcil/synthaser.svg?branch=master)](https://travis-ci.org/gamcil/synthaser)
 [![Coverage Status](https://coveralls.io/repos/github/gamcil/synthaser/badge.svg?branch=master)](https://coveralls.io/github/gamcil/synthaser?branch=master&service=github)
 [![Documentation Status](https://readthedocs.org/projects/synthaser/badge/?version=latest)](https://synthaser.readthedocs.io/en/latest/?badge=latest)
+[![PyPI version](https://badge.fury.io/py/synthaser.svg)](https://badge.fury.io/py/synthaser)
 
 ## Process
 `synthaser` parses the results of a batch NCBI conserved domain search and determines
