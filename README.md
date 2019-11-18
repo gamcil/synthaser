@@ -63,7 +63,7 @@ The generated figure is then saved in `figure.svg`, and looks like:
 `synthaser` can also start batch searches, either by providing more than one sequence in
 a query FASTA file (`-qf`), or more than one NCBI accession (`-qi`).
 
-For example, searching 26 PKS sequences from *A. nidulans*:
+For example, searching PKS sequences from *A. nidulans*:
 
 ```sh
 $ synthaser -qf sequences.fasta --json nidulans.svg
