@@ -225,7 +225,7 @@ def test_Figure_visualise(anid):
     test_svg = TEST_DIR / "anid.svg"
     with test_svg.open() as handle:
         svg = handle.read()
-    assert anid.visualise() == svg
+    assert anid.visualise() + "\n" == svg
 
 
 def test_Figure_add_query_sequences_empty(figure):
