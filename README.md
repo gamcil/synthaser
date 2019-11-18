@@ -60,8 +60,7 @@ The generated figure is then saved in `figure.svg`, and looks like:
 
 <img
   src="https://raw.githubusercontent.com/gamcil/synthaser/master/img/cichorine_svg.png"
-  width="600"
->
+  width="600">
 
 `synthaser` can also start batch searches, either by providing more than one sequence in
 a query FASTA file (`-qf`), or more than one NCBI accession (`-qi`).
@@ -76,8 +75,7 @@ Produces:
 
 <img
   src="https://raw.githubusercontent.com/gamcil/synthaser/master/img/anid_pks.png"
-  width="600"
->
+  width="600">
 
 Refer to `synthaser --help` for all tweakable parameters for generating the SVG.
 
