@@ -21,6 +21,7 @@ def synthaser(
     query_ids=None,
     svg_file=None,
     json_file=None,
+    cdsid=None,
     db=None,
     smode=None,
     useid1=None,
@@ -51,7 +52,9 @@ def synthaser(
         dmode=dmode,
     )
 
-    fig = figure.Figure.from_cdsearch(query_file=query_file, query_ids=query_ids)
+    fig = figure.Figure.from_cdsearch(
+        query_file=query_file, query_ids=query_ids, cdsid=cdsid
+    )
 
     fig.set_config(
         arrow_height=arrow_height,
@@ -63,19 +66,19 @@ def synthaser(
     )
 
     if json_file:
-        LOG.info("Serialising Figure to JSON: %s", json_file)
+        LOG.info("Serialising Figure to JSON: %s", json_file.name)
         json_file.write(fig.to_json())
 
     if svg_file:
-        LOG.info("Writing SVG to: %s", svg_file)
+        LOG.info("Writing SVG to: %s", svg_file.name)
         svg_file.write(fig.visualise())
 
-    print(fig)
+    print(fig, flush=True)
 
     LOG.info("Finished synthaser")
 
 
-def get_arguments():
+def get_arguments(args):
     parser = argparse.ArgumentParser("synthaser")
 
     _inputs = parser.add_argument_group("Input")
@@ -188,7 +191,7 @@ def get_arguments():
         " be set to this width, and all other Synthases will be scaled accordingly",
     )
 
-    return parser.parse_args()
+    return parser.parse_args(args)
 
 
 def main():
@@ -199,6 +202,7 @@ def main():
         query_ids=args.query_ids,
         svg_file=args.svg_file,
         json_file=args.json_file,
+        cdsid=args.cdsid,
         db=args.db,
         smode=args.smode,
         useid1=args.useid1,

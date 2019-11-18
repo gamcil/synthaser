@@ -3,12 +3,79 @@
 """
 This module stores all of the routines for classification of Synthase objects into
 biosynthetic categories.
+
+The main function provided by this module is `classify`, which accepts a Synthase object
+and runs through all the necessary classification steps for a given synthase type.
+
+For example, if we instantiate a new `Synthase` object for a typical HR-PKS:
+
+>>> from synthaser.models import Domain, Synthase
+>>> synthase = Synthase(
+...     header='sequence',
+...     sequence='MKDESTMSD.....',
+...     domains=[
+...         Domain(type='KS', domain='PKS_KS'),
+...         Domain(type='KR'),
+...         Domain(type='ER'),
+...         Domain(type='DH'),
+...         ...
+...     ]
+... )
+
+and call `classify`:
+
+>>> from synthaser import classify
+>>> classify.classify(synthase)
+
+The function will call a series of functions to classify it.
+First, it calls `assign_broad_type`, which assigns the broader biosynthetic
+category ('PKS') given the first `models.Domain` instance with `type` 'KS'.
+Then, it calls `assign_PKS_type`, which assigns a PKS type based on the specific
+conserved domain name (`domain` attribute) of the KS domain object. These relationships
+are stored (and can be altered) in the `PKS_TYPES` dictionary. In the example case,
+the KS object is a 'PKS_KS' hit, and so the synthase is designated a 'Type I PKS'.
+
+>>> synthase.type
+'Type I PKS'
+
+Finally, the synthase is further classified into a T1PKS subtype via
+`assign_T1PKS_subtype`, which looks for the presence of reductive (ER, KR, DH) domains.
+Since we have the full set, this synthase is a highly-reducing PKS, and as such is
+assigned the subtype 'HR-PKS'.
+
+>>> synthase.subtype
+'HR-PKS'
+
+When classifying an NRPS, the only options are NRPS (a full A, T, C module is present)
+and NRPS-like.
+
+PKS and NRPS share some related domains, which in turn will return the same set of
+conserved domains when searched against the CDD. For example, an ACP domain from a PKS
+and a thiolation (T) domain from an NRPS will both return 'PKS_PP', 'AcpP' and
+'PP-binding' conserved domain hits. To account for this, the function
+`rename_NRPS_domains` will iterate over the domain set of an NRPS or PKS-NRPS hybrid
+synthase object, and rename domains based on convention.
+For example, if we have an NRPS object prior to classification:
+
+>>> synthase.architecture
+A-ACP-C-A-ACP-C-TR
+
+we can call `rename_NRPS_domains`:
+
+>>> classify.rename_NRPS_domains(synthase)
+>>> synthase.architecture
+A-T-C-A-T-C-R
+
+In this case, ACP domains are renamed T, and the thioreductase (TR) is renamed R.
 """
 
 
 PKS_TYPES = {
+    "SCP-x thiolase": ["SCP-x_thiolase"],
+    "HMG-CoA synthase": ["HMG-CoA-S_euk"],
+    "3-ketoacyl-CoA thiolase": ["thiolase", "PLN02287"],
+    "FAS I/II": ["PRK07314", "KAS_I_II", "FabF", "FabB"],
     "Type I PKS": ["PKS", "PKS_KS"],
-    "Type II PKS": ["CLF", "KAS_I_II"],
     "Type III PKS": ["CHS_like", "KAS_III"],
 }
 
@@ -53,12 +120,14 @@ def assign_PKS_type(domains):
         If no type could be assigned.
     """
     domain_types = [domain.type for domain in domains]
+    ks = domains[domain_types.index("KS")].domain
     if domain_types.count("KS") >= 2:
         return "multi-modular PKS"
-    ks = domains[domain_types.index("KS")].domain
     for type, conserved_domains in PKS_TYPES.items():
         if ks in conserved_domains:
             return type
+    if "AT" not in domain_types:
+        return "trans-AT PKS"
     raise ValueError("Failed to assign PKS type")
 
 
@@ -123,6 +192,8 @@ def assign_NRPS_type(domains):
     return "NRPS-like"
 
 
+# TODO: adjust for architectures with weird orders, e.g. PKS-NRPS that starts with A
+#       before the PKS module ... try to specifically recognize an NRPS module
 def rename_NRPS_domains(synthase):
     """Replace domain types in Hybrid and NRPS Synthases.
 
@@ -159,7 +230,7 @@ def rename_NRPS_domains(synthase):
     start, replace = 0, {"ACP": "T", "TR": "R"}
     if synthase.type == "Hybrid":
         for start, domain in enumerate(synthase.domains):
-            if domain.type == "C":
+            if domain.type in ("C", "E"):
                 break
     for domain in synthase.domains[start:]:
         if domain.type in replace:
