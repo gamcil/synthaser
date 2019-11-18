@@ -121,7 +121,9 @@ def get_arguments(args):
     )
     search.add_argument(
         "--cdsid",
-        help="ID of a CD-Search run, e.g. QM3-qcdsearch-B4BAD4B59BC5B80-3E7CFCD3F93E21D0",
+        help="CD-Search run ID, e.g. QM3-qcdsearch-B4BAD4B59BC5B80-3E7CFCD3F93E21D0."
+        " If provided, will attempt to retrieve results instead of starting a new"
+        " search.",
     )
     search.add_argument(
         "--smode",
