@@ -9,7 +9,7 @@ with open("README.md") as readme:
 
 def get_version():
     """Get version number from __init__.py"""
-    version_file = Path(__file__).resolve().parent / "clusterblaster" / "__init__.py"
+    version_file = Path(__file__).resolve().parent / "synthaser" / "__init__.py"
     version_match = re.search(
         r"^__version__ = ['\"]([^'\"]*)['\"]", version_file.read_text(), re.M
     )
