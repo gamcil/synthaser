@@ -2,6 +2,8 @@
 
 # TODO:
 #   1. Add scale bar (1kb)
+#   2. Add legend
+#       - Square box, then colour circle + text for each domain in figure
 
 """
 This module handles the generation of the SVG figure.
@@ -12,9 +14,9 @@ instantiated simply with a collection of `models.Synthase` instances:
 >>> from synthaser.models import Synthase
 >>> from synthase.figure import Figure
 >>> synthases = [
-...     models.Synthase(...),
-...     models.Synthase(...),
-...     models.Synthase(...),
+...     Synthase(...),
+...     Synthase(...),
+...     Synthase(...),
 ...     ...
 ...     ]
 >>> figure = Figure(synthases)
