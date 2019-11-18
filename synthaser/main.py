@@ -6,7 +6,7 @@ import argparse
 import logging
 import sys
 
-from synthaser import figure, ncbi
+from synthaser import figure, ncbi, __version__
 
 logging.basicConfig(
     format="[%(asctime)s] %(levelname)s - %(message)s", datefmt="%H:%M:%S"
@@ -80,6 +80,9 @@ def synthaser(
 
 def get_arguments(args):
     parser = argparse.ArgumentParser("synthaser")
+    parser.add_argument(
+        "--version", action="version", version="%(prog)s " + __version__
+    )
 
     _inputs = parser.add_argument_group("Input")
     inputs = _inputs.add_mutually_exclusive_group(required=True)
