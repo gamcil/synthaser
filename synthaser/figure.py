@@ -194,10 +194,17 @@ class Figure:
         width=None,
     ):
         """Set visualisation parameters on this Figure."""
-        for key, value in locals().items():
-            if not value:
-                continue
-            self.config[key] = value
+        params = {
+            "arrow_height": arrow_height,
+            "arrow_spacing": arrow_spacing,
+            "block_spacing": block_spacing,
+            "header_fsize": header_fsize,
+            "info_fsize": info_fsize,
+            "width": width,
+        }
+        for key, value in params.items():
+            if value:
+                self.config[key] = value
 
     def calculate_scale_factor(self):
         """Calculate the scale factor for drawing synthases.
