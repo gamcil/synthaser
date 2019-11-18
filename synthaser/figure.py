@@ -1,5 +1,8 @@
 #!/usr/bin/env python3
 
+# TODO:
+#   1. Add scale bar (1kb)
+
 """
 This module handles the generation of the SVG figure.
 
@@ -87,7 +90,7 @@ class Figure:
         "C": "#393989",
         "A": "#56157F",
         "E": "#FFA500",
-        "cAT": "#FF6600FF",
+        "cAT": "#FF6600",
     }
 
     default_config = {
