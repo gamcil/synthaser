@@ -1,7 +1,5 @@
 """
 Plot domain architectures using matplotlib.
-
-Very much an experiment, and not actually used by synthaser.
 """
 
 
@@ -170,9 +168,12 @@ def format_yticklabels(ax, types):
             label.set_fontsize("small")
 
 
-def plot(synthases):
+def generate_figure(synthases):
     """Generate a synthaser plot."""
 
+    # TODO: convert to function that just plots to given axes
+
+    # Sort synthases, get subtype groups and domain types
     synthases = sorted(synthases, key=lambda s: s.sequence_length, reverse=True)
     groups = sorted(
         subtype_iter(synthases), key=lambda g: g[0].sequence_length, reverse=True
@@ -209,8 +210,10 @@ def plot(synthases):
         plot_gene_arrow(ax, synthase)
 
     # Add titles
-    plt.suptitle("synthaser", fontsize=18, weight="bold")
-    plt.title(f"Domain architectures of {len(synthases)} synth(et)ases", fontsize=15)
+    fig.suptitle("synthaser", fontsize="x-large", weight="bold")
+    ax.set_title(
+        f"Domain architectures of {len(synthases)} synth(et)ases", fontsize="large"
+    )
 
     # Create legend elements for each domain actually in the synthases
     legend_elements = [
@@ -230,4 +233,27 @@ def plot(synthases):
         fontsize="smaller",
     )
 
-    plt.show()
+    return fig
+
+
+def plot(synthases, file=None, dpi=300):
+    """Plot a collection of synthases, show or save to file.
+
+    Note that the format of the file saved is determined by the extension specified in
+    the str given to `file`.
+    For example, to save as png:
+
+    >>> plot(synthases, file='figure.png', dpi=600)
+
+    or as svg:
+
+    >>> plot(synthases, file='figure.svg')
+
+    The `dpi` argument is ignored if not saving to file, and effectively ignored by
+    matplotlib if given with a file format that doesn't use it (e.g. svg).
+    """
+    figure = generate_figure(synthases)
+    if not file:
+        figure.show()
+    else:
+        figure.savefig(file, dpi=dpi)
