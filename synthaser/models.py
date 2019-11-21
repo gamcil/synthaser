@@ -99,8 +99,6 @@ class Synthase:
         Subtype of synthase, e.g. HR-PKS.
     """
 
-    __slots__ = ("header", "sequence", "domains", "type", "subtype")
-
     def __init__(
         self, header=None, sequence=None, domains=None, type=None, subtype=None
     ):
@@ -200,8 +198,6 @@ class Synthase:
 
 class Domain:
     """Store a conserved domain hit."""
-
-    __slots__ = ("type", "domain", "start", "end", "evalue", "bitscore")
 
     def __init__(
         self, type=None, domain=None, start=None, end=None, evalue=None, bitscore=None
