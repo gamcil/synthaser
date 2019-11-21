@@ -222,7 +222,12 @@ def plot(synthases):
 
     # Make the legend
     ax.legend(
-        handles=legend_elements, fancybox=True, columnspacing=1, loc="best", ncol=2
+        handles=legend_elements,
+        fancybox=True,
+        columnspacing=1,
+        loc="best",
+        ncol=2,
+        fontsize="smaller",
     )
 
     plt.show()
