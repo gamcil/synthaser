@@ -214,7 +214,7 @@ def plot(synthases):
 
     # Create legend elements for each domain actually in the synthases
     legend_elements = [
-        Patch(label=domain, facecolor=COLOURS[domain], width=2)
+        Patch(label=domain, facecolor=COLOURS[domain])
         for domain in set(
             domain.type for synthase in synthases for domain in synthase.domains
         )
