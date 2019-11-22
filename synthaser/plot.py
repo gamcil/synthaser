@@ -160,18 +160,35 @@ def format_yticklabels(ax, types):
     """Set different formatting for synthase types and headers in yticklabels."""
     for label in ax.get_yticklabels():
         if label.get_text() in types:
-            label.set_color("black")
-            label.set_fontsize("medium")
-            label.set_weight("bold")
+            label.set(color="black", fontsize="medium", weight="bold")
         else:
-            label.set_color("grey")
-            label.set_fontsize("small")
+            label.set(color="grey", fontsize="small")
 
 
-def generate_figure(synthases):
-    """Generate a synthaser plot."""
+def generate_legend_elements(synthases):
+    """Generate a list of unique Patch legend elements.
 
-    # TODO: convert to function that just plots to given axes
+    First groups elements with common colours (e.g. R and TR, T and ACP), then generates
+    `matplotlib.pyplot.Patch` instances with a comma-separated string of domain types as
+    its label.
+    """
+    elements = {}
+    for synthase in synthases:
+        for domain in synthase.domains:
+            colour = COLOURS[domain.type]
+            if colour not in elements:
+                elements[colour] = {domain.type}
+            else:
+                elements[colour].add(domain.type)
+
+    return [
+        Patch(label=", ".join(domains), facecolor=colour)
+        for colour, domains in elements.items()
+    ]
+
+
+def generate_figure(ax, synthases):
+    """Generate a synthaser plot on a given matplotlib axes."""
 
     # Sort synthases, get subtype groups and domain types
     synthases = sorted(synthases, key=lambda s: s.sequence_length, reverse=True)
@@ -180,14 +197,17 @@ def generate_figure(synthases):
     )
     types = set(group[0].subtype for group in groups)
 
-    # Initialise the figure
-    fig, ax = plt.subplots()
+    # Initialise the figure and adjust axes
+    # Sets initial height of the figure as 0.25 * total synthases + groups (inches).
+    total = len(synthases) + len(groups) - 1
+    label = generate_yticklabels(groups)
+    ytick = np.arange(total + 1)
 
-    # Adjust axes
-    _total = len(synthases) + len(groups) - 1
-    ax.set_yticks(np.arange(_total + 1))
-    ax.set_yticklabels(generate_yticklabels(groups))
-    ax.set_ylim([_total + 1, -1])
+    ax.set_yticks(ytick)
+    ax.set_yticklabels(label)
+    ax.set_ylim([total + 1, -1])
+
+    # Round x limit up to nearest 500
     ax.set_xlim([0, math.ceil(synthases[0].sequence_length / 500) * 500])
 
     # Adjust ticks
@@ -209,19 +229,8 @@ def generate_figure(synthases):
     for synthase in synthases:
         plot_gene_arrow(ax, synthase)
 
-    # Add titles
-    fig.suptitle("synthaser", fontsize="x-large", weight="bold")
-    ax.set_title(
-        f"Domain architectures of {len(synthases)} synth(et)ases", fontsize="large"
-    )
-
     # Create legend elements for each domain actually in the synthases
-    legend_elements = [
-        Patch(label=domain, facecolor=COLOURS[domain])
-        for domain in set(
-            domain.type for synthase in synthases for domain in synthase.domains
-        )
-    ]
+    legend_elements = generate_legend_elements(synthases)
 
     # Make the legend
     ax.legend(
@@ -232,8 +241,6 @@ def generate_figure(synthases):
         ncol=2,
         fontsize="smaller",
     )
-
-    return fig
 
 
 def plot(synthases, file=None, dpi=300):
@@ -252,8 +259,15 @@ def plot(synthases, file=None, dpi=300):
     The `dpi` argument is ignored if not saving to file, and effectively ignored by
     matplotlib if given with a file format that doesn't use it (e.g. svg).
     """
-    figure = generate_figure(synthases)
+    figure, axes = plt.subplots(figsize=(7, 0.3 * len(synthases)))
+    figure.suptitle("synthaser", fontsize="x-large", weight="bold")
+    axes.set_title(
+        f"Domain architectures of {len(synthases)} synth(et)ases", fontsize="large"
+    )
+
+    generate_figure(axes, synthases)
+
     if not file:
         figure.show()
     else:
-        figure.savefig(file, dpi=dpi)
+        figure.savefig(file, dpi=dpi, bbox_inches="tight")
