@@ -321,3 +321,14 @@ def extract_all_domains(synthases):
                 for i, sequence in enumerate(sequences)
             )
     return dict(combined)
+
+
+def serialise_synthases(handle, synthases, **kwargs):
+    """Serialise a collection of Synthase objects to JSON."""
+    dicts = [synthase.to_dict() for synthase in synthases]
+    json.dump(dicts, handle, **kwargs)
+
+
+def load_synthases(handle):
+    """Load a collection of Synthase objects from JSON."""
+    return [Synthase.from_dict(entry) for entry in json.load(handle)]
