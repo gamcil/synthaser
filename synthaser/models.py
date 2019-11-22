@@ -77,7 +77,8 @@ and writing to file. When loading up from JSON, this process is reversed, and th
 entries in the file are converted back to Python objects.
 """
 
-from collections import defaultdict
+from collections import defaultdict, UserList
+from itertools import groupby
 import json
 
 
@@ -108,7 +109,7 @@ class Synthase:
         self.type = type if type else ""
         self.subtype = subtype if subtype else ""
 
-    def __repr__(self):
+    def __str__(self):
         return f"{self.header}\t{self.architecture}"
 
     def __eq__(self, other):
@@ -275,60 +276,117 @@ class Domain:
         return cls(**json.load(json_file))
 
 
-def extract_all_domains(synthases):
-    """Extract all domain sequences in a list of `Synthase` objects.
+# TODO: instantiate this first with ANY query (i.e. file/ids --> container --> CDSearch)
+#       thus will already have sequences
+class SynthaseContainer(UserList):
+    """Simple container class for Synthase objects.
 
-    For example, given a list of `Synthase` objects:
-
-    >>> synthases = [Synthase(header='one', ...), Synthase(header='two', ...)]
-
-    Then, the output of this function may resemble:
-
-    >>> domains = extract_all_domains(synthases)
-    >>> domains
-    {'KS': [('one_KS_1', 'IAIA...'), ('two_KS_1', 'IAIE...')], 'AT': [...]}
-
-    We can easily write these to file in FASTA format. For example, to write all KS
-    domain sequences to file, we open a file handle for writing and build a multiFASTA
-    using `create_fasta`:
-
-    >>> with open('output.faa', 'w') as out:
-    ...     multifasta = '\\n'.join(
-    ...         create_fasta(header, sequence)
-    ...         for header, sequence in domains['KS'].items()
-    ...     )
-    ...     out.write(multifasta)
-
-    Parameters
-    ----------
-    synthases : list
-        A list of `Synthase` objects with non-empty `sequence` and `domains`
-        attributes.
-
-    Returns
-    -------
-    combined : dict
-        Dictionary of extracted domain sequences keyed on domain type. Each domain is
-        represented by a tuple consisting of a unique header, in the format
-        `Synthase.header_Domain.type_index` where `index` is the index of that
-        Domain in the Synthase, and the extracted sequence.
+    The purpose of this class is to facilitate batch actions on Synthase objects, i.e.
+    serialisation, extraction of domain sequences, iteration over type/subtype, and
+    printing summaries.
     """
-    combined = defaultdict(list)
-    for synthase in synthases:
-        for type, sequences in synthase.extract_domains().items():
-            combined[type].extend(
-                (f"{synthase.header}_{type}_{i}", sequence)
-                for i, sequence in enumerate(sequences)
+
+    def __init__(self, synthases):
+        UserList.__init__(self)
+        self.extend(synthases)
+
+    def __add__(self, container):
+        if not isinstance(container, SynthaseContainer):
+            raise TypeError("Expected SynthaseContainer object")
+        copy = self.copy()
+        copy.extend(container)
+        return copy
+
+    def __append__(self, synthase):
+        if not isinstance(synthase, Synthase):
+            raise TypeError("Expected Synthase object")
+        self.data.append(synthase)
+
+    def __extend__(self, synthases):
+        for synthase in synthases:
+            self.append(synthase)
+
+    def __str__(self):
+        return "\n\n".join(
+            "{}\n{}\n{}".format(
+                subtype,
+                "-" * len(subtype),
+                "\n".join(str(synthase) for synthase in group),
             )
-    return dict(combined)
+            for subtype, group in self.subtypes()
+        )
 
+    def __get__(self, header):
+        for synthase in self:
+            if synthase.header == header:
+                return synthase
+        raise KeyError(f"No Synthase object with header: '{header}'")
 
-def serialise_synthases(handle, synthases, **kwargs):
-    """Serialise a collection of Synthase objects to JSON."""
-    dicts = [synthase.to_dict() for synthase in synthases]
-    json.dump(dicts, handle, **kwargs)
+    def to_json(self, handle, **kwargs):
+        """Serialise this container to JSON."""
+        dicts = [synthase.to_dict() for synthase in self]
+        json.dump(dicts, handle, **kwargs)
 
+    @classmethod
+    def from_json(cls, handle):
+        """Load Synthase objects from JSON."""
+        return cls(Synthase.from_dict(entry) for entry in json.load(handle))
 
-def load_synthases(handle):
-    """Load a collection of Synthase objects from JSON."""
-    return [Synthase.from_dict(entry) for entry in json.load(handle)]
+    def _attr_iter(self, attr):
+        """Iterate over Synthase objects inside the SynthaseContainer, grouped some
+        attribute.
+        """
+        synthases = sorted(self.data, key=lambda s: getattr(s, attr))
+        for key, group in groupby(synthases, key=lambda s: getattr(s, attr)):
+            yield key, type(self)(group)
+
+    def subtypes(self):
+        """Iterate over Synthase subtypes.
+
+        Yields
+        ------
+        subtype : str
+            Subtype of Synthase objects in the group
+        synthases : SynthaseContainer
+            SynthaseContainer object containing Synthase objects
+        """
+        yield from self._attr_iter("subtype")
+
+    def types(self):
+        """Iterate over Synthase types.
+
+        Yields
+        ------
+        type : str
+            Type of Synthase objects in the group
+        synthases : SynthaseContainer
+            SynthaseContainer object containing Synthase objects
+        """
+        yield from self._attr_iter("type")
+
+    def extract_domains(self):
+        """Extract domain sequence from Synthase objects in this container.
+
+        For example, given a `SynthaseContainer` containing `Synthase` objects:
+
+        >>> synthases = [Synthase(header='one', ...), Synthase(header='two', ...)]
+        >>> container = SynthaseContainer(synthases)
+
+        Then, the output of this function may resemble:
+
+        >>> container.extract_domains()
+        {'KS': [('one_KS_1', 'IAIA...'), ('two_KS_1', 'IAIE...')], 'AT': [...]}
+        """
+        combined = defaultdict(list)
+        for synthase in self:
+            for type, sequences in synthase.extract_domains().items():
+                combined[type].extend(
+                    (f"{synthase.header}_{type}_{i}", sequence)
+                    for i, sequence in enumerate(sequences)
+                )
+        return dict(combined)
+
+    def add_sequences(self, sequences):
+        """Add amino acid sequence to Synthase objects in this container."""
+        for header, sequence in sequences.items():
+            self[header].sequence = sequence
