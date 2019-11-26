@@ -157,6 +157,9 @@ class Synthase:
             domains[domain.type].append(domain.slice(self.sequence))
         return dict(domains)
 
+    def to_fasta(self):
+        return f">{self.header}\n{self.sequence}"
+
     def to_dict(self):
         return {
             "header": self.header,
@@ -276,8 +279,6 @@ class Domain:
         return cls(**json.load(json_file))
 
 
-# TODO: instantiate this first with ANY query (i.e. file/ids --> container --> CDSearch)
-#       thus will already have sequences
 class SynthaseContainer(UserList):
     """Simple container class for Synthase objects.
 
@@ -316,7 +317,7 @@ class SynthaseContainer(UserList):
             for subtype, group in self.subtypes()
         )
 
-    def __get__(self, header):
+    def get(self, header):
         for synthase in self:
             if synthase.header == header:
                 return synthase
@@ -333,7 +334,7 @@ class SynthaseContainer(UserList):
         return cls(Synthase.from_dict(entry) for entry in json.load(handle))
 
     def _attr_iter(self, attr):
-        """Iterate over Synthase objects inside the SynthaseContainer, grouped some
+        """Iterate over Synthase objects inside the SynthaseContainer, grouped by some
         attribute.
         """
         synthases = sorted(self.data, key=lambda s: getattr(s, attr))
@@ -389,4 +390,14 @@ class SynthaseContainer(UserList):
     def add_sequences(self, sequences):
         """Add amino acid sequence to Synthase objects in this container."""
         for header, sequence in sequences.items():
-            self[header].sequence = sequence
+            self.get(header).sequence = sequence
+
+    def to_fasta(self):
+        return "\n".join(synthase.to_fasta() for synthase in self)
+
+    @classmethod
+    def from_sequences(cls, sequences):
+        """Build a SynthaseContainer from a dictionary of query sequences."""
+        return cls(
+            Synthase(header=key, sequence=value) for key, value in sequences.items()
+        )
