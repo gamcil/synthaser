@@ -62,8 +62,7 @@ import re
 from collections import defaultdict
 from operator import attrgetter
 
-from synthaser import classify
-from synthaser.models import Domain, Synthase
+from synthaser.models import Domain
 
 
 LOG = logging.getLogger(__name__)
@@ -293,7 +292,7 @@ def _parse_cdsearch_table(handle):
     return dict(results)
 
 
-def _synthases_from_results(results, **kwargs):
+def _filter_results(results, **kwargs):
     """Build Synthase objects from a parsed results dictionary.
 
     Any additional kwargs are passed to `_filter_domains`.
@@ -308,18 +307,13 @@ def _synthases_from_results(results, **kwargs):
     synthases : list
         Synthase objects containing all Domain objects found in the CD-Search.
     """
-    synthases = []
+    _results = {}
     for name, domains in results.items():
-        domains = _filter_domains(domains, **kwargs)
-        if not domains:
+        _domains = _filter_domains(domains, **kwargs)
+        if not _domains:
             LOG.error("No domains remain after filtering for %s", name)
-        synthase = Synthase(header=name, domains=domains)
-        try:
-            classify.classify(synthase)
-        except ValueError:
-            LOG.error("Failed to classify %s", name)
-        synthases.append(synthase)
-    return synthases
+        _results[name] = _domains
+    return _results
 
 
 def _is_fragmented_domain(one, two, coverage_pct=0.5, tolerance_pct=0.1):
@@ -392,6 +386,7 @@ def _filter_domains(domains, by="evalue", coverage_pct=0.5, tolerance_pct=0.1):
     list
         models.Domain instances remaining after filtering.
     """
+
     domains = [
         _filter_domain_group(group, by) for group in _group_overlapping_hits(domains)
     ]
@@ -557,4 +552,4 @@ def parse(handle, **kwargs):
     list:
         A list of Synthase objects parsed from the results file.
     """
-    return _synthases_from_results(_parse_cdsearch_table(handle), **kwargs)
+    return _filter_results(_parse_cdsearch_table(handle), **kwargs)
