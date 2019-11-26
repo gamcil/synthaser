@@ -87,6 +87,7 @@ from synthaser.models import SynthaseContainer
 LOG = logging.getLogger(__name__)
 
 
+EFETCH_URL = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi?"
 CDSEARCH_URL = "https://www.ncbi.nlm.nih.gov/Structure/bwrpsb/bwrpsb.cgi?"
 
 SEARCH_PARAMS = {
@@ -451,7 +452,7 @@ def efetch_sequences(headers):
         correspond to an entry in the Protein database.
     """
     response = requests.post(
-        "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi?",
+        EFETCH_URL,
         params={"db": "protein", "rettype": "fasta"},
         files={"id": ",".join(headers)},
     )
