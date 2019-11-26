@@ -6,7 +6,9 @@ import argparse
 import logging
 import sys
 
-from synthaser import figure, ncbi, __version__
+from pathlib import Path
+
+from synthaser import ncbi, __version__, plot, models
 
 logging.basicConfig(
     format="[%(asctime)s] %(levelname)s - %(message)s", datefmt="%H:%M:%S"
@@ -19,7 +21,8 @@ LOG.setLevel(logging.INFO)
 def synthaser(
     query_file=None,
     query_ids=None,
-    svg_file=None,
+    figure=None,
+    svg_dpi=300,
     json_file=None,
     cdsid=None,
     db=None,
@@ -30,50 +33,50 @@ def synthaser(
     evalue=None,
     maxhit=None,
     dmode=None,
-    arrow_height=None,
-    arrow_spacing=None,
-    block_spacing=None,
-    header_fsize=None,
-    info_fsize=None,
-    width=None,
 ):
     """Run synthaser."""
 
     LOG.info("Starting synthaser")
 
-    ncbi.set_search_params(
-        db=db,
-        smode=smode,
-        useid1=useid1,
-        compbasedadj=compbasedadj,
-        filter=filter,
-        evalue=evalue,
-        maxhit=maxhit,
-        dmode=dmode,
-    )
+    # Set flag to prevent re-writing the JSON we load from
+    _json_loaded = False
 
-    fig = figure.Figure.from_cdsearch(
-        query_file=query_file, query_ids=query_ids, cdsid=cdsid
-    )
+    if json_file and Path(json_file).exists():
+        LOG.info("Specified JSON file exists, attempting to read...")
+        with open(json_file) as fp:
+            synthases = models.SynthaseContainer.from_json(fp)
+        _json_loaded = True
+    else:
+        ncbi.set_search_params(
+            db=db,
+            smode=smode,
+            useid1=useid1,
+            compbasedadj=compbasedadj,
+            filter=filter,
+            evalue=evalue,
+            maxhit=maxhit,
+            dmode=dmode,
+        )
 
-    fig.set_config(
-        arrow_height=arrow_height,
-        arrow_spacing=arrow_spacing,
-        block_spacing=block_spacing,
-        header_fsize=header_fsize,
-        info_fsize=info_fsize,
-        width=width,
-    )
+        synthases = ncbi.CDSearch(
+            query_file=query_file, query_ids=query_ids, cdsid=cdsid
+        )
 
-    if json_file:
-        LOG.info("Serialising Figure to JSON: %s", json_file.name)
-        json_file.write(fig.to_json())
+    print(synthases, flush=True)
 
-    if svg_file:
-        LOG.info("Writing SVG to: %s", svg_file.name)
-        svg_file.write(fig.visualise())
+    if json_file and not _json_loaded:
+        LOG.info("Serialising Figure to JSON: %s", json_file)
+        with open(json_file, "w") as fp:
+            synthases.to_json(fp)
 
-    print(fig, flush=True)
+    if figure:
+        if figure == "show":
+            # Opens matplotlib viewer
+            LOG.info("Generating synthaser plot...")
+            plot.plot(synthases)
+        else:
+            LOG.info("Writing SVG to: %s", figure)
+            plot.plot(synthases, file=figure, dpi=svg_dpi)
 
     LOG.info("Finished synthaser")
 
@@ -84,8 +87,7 @@ def get_arguments(args):
         "--version", action="version", version="%(prog)s " + __version__
     )
 
-    _inputs = parser.add_argument_group("Input")
-    inputs = _inputs.add_mutually_exclusive_group(required=True)
+    inputs = parser.add_argument_group("Input")
     inputs.add_argument(
         "-qf",
         "--query_file",
@@ -101,16 +103,20 @@ def get_arguments(args):
 
     outputs = parser.add_argument_group("Output")
     outputs.add_argument(
-        "-svg",
-        "--svg_file",
-        type=argparse.FileType("w"),
-        help="Write SVG figure to this file name",
+        "-fig",
+        "--figure",
+        help="Generate a synthaser plot. If 'show' is specified,"
+        " will open the matplotlib viewer to allow adjustments. Otherwise, will use"
+        " the value provided as a file name for directly saving to SVG.",
+    )
+    outputs.add_argument(
+        "-dpi", "--svg_dpi", help="DPI to use when saving figure (def. 300)"
     )
     outputs.add_argument(
         "-json",
         "--json_file",
-        type=argparse.FileType("w"),
-        help="Serialise Figure object to JSON",
+        help="Serialise Synthase objects to JSON. If this is specified, the synthases"
+        " can be loaded from this file using the synthaser Python API.",
     )
 
     search = parser.add_argument_group("CD-Search parameters")
@@ -164,39 +170,12 @@ def get_arguments(args):
         help="What level of CD-Search hits to report (def. full)",
     )
 
-    visual = parser.add_argument_group("Visualisation options")
-    visual.add_argument(
-        "--arrow_height", type=int, help="Height (px) of Synthase polygons"
-    )
-    visual.add_argument(
-        "--arrow_spacing",
-        type=int,
-        help="Vertical spacing (px) to insert between each Synthase polygon",
-    )
-    visual.add_argument(
-        "--block_spacing",
-        type=int,
-        help="Vertical spacing (px) to insert between each block of Synthase polygons",
-    )
-    visual.add_argument(
-        "--header_fsize",
-        type=int,
-        help="Font size of Synthase type headers (e.g. Type I PKS)",
-    )
-    visual.add_argument(
-        "--info_fsize",
-        type=int,
-        help="Font size of Synthase information headers (e.g. SEQ001, 2000aa,"
-        " KS-AT-DH-ER-KR-ACP)",
-    )
-    visual.add_argument(
-        "--width",
-        type=int,
-        help="Width (px) of generated SVG. The longest sequence in the Figure will"
-        " be set to this width, and all other Synthases will be scaled accordingly",
-    )
+    args = parser.parse_args(args)
 
-    return parser.parse_args(args)
+    if not any([args.query_ids, args.query_file, args.json_file]):
+        raise ValueError("Expected query_ids, query_file or json_file")
+
+    return args
 
 
 def main():
@@ -205,7 +184,8 @@ def main():
     synthaser(
         query_file=args.query_file,
         query_ids=args.query_ids,
-        svg_file=args.svg_file,
+        figure=args.figure,
+        svg_dpi=args.svg_dpi,
         json_file=args.json_file,
         cdsid=args.cdsid,
         db=args.db,
@@ -216,12 +196,6 @@ def main():
         evalue=args.evalue,
         maxhit=args.maxhit,
         dmode=args.dmode,
-        arrow_height=args.arrow_height,
-        arrow_spacing=args.arrow_spacing,
-        block_spacing=args.block_spacing,
-        header_fsize=args.header_fsize,
-        info_fsize=args.info_fsize,
-        width=args.width,
     )
 
 
