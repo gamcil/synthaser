@@ -76,9 +76,13 @@ import time
 import logging
 import re
 
+from pathlib import Path
+
 import requests
 
-from synthaser import fasta
+from synthaser import fasta, results
+from synthaser.classify import classify
+from synthaser.models import SynthaseContainer
 
 LOG = logging.getLogger(__name__)
 
@@ -100,68 +104,89 @@ SEARCH_PARAMS = {
 SEARCH_HISTORY = []
 
 
-def _search_query_file(handle):
-    """Launch a new CD-Search job from a query file.
+def _container_from_query_file(handle):
+    """Build SynthaseContainer from FASTA file handle."""
+    return SynthaseContainer.from_sequences(fasta.parse(handle))
 
-    Checks that file contains less than 4000 sequences, as per NCBI limit.
 
-    Parameters
-    ----------
-    handle : open file handle
-        An open file handle belonging to a query FASTA file.
+def _container_from_query_ids(ids):
+    """Build SynthaseContainer from query ID file or collection.
+
+    First checks if `ids` is an iterable; if so, fetch sequences from NCBI and return a
+    new SynthaseContainer. Otherwise, expects a file containing a collection of IDs
+    each on a new line.
+    """
+    if len(ids) == 1 and Path(ids[0]).exists():
+        # This is a file
+        with Path(ids[0]).open() as fp:
+            _ids = [line.strip() for line in fp]
+        return SynthaseContainer.from_sequences(efetch_sequences(_ids))
+
+    # Otherwise, expect nargs with IDs
+    return SynthaseContainer.from_sequences(efetch_sequences(ids))
+
+
+def prepare_input(query_ids=None, query_file=None):
+    """Generate a SynthaseContainer from either query IDs or a query file.
+
+    Returns
+    -------
+    models.SynthaseContainer
+        Collection of `models.Synthase` objects representing query sequences.
 
     Raises
     ------
     ValueError
-        If there are more than 4000 sequences in the handle.
-    """
-    if fasta.count(handle) > 4000:
-        raise ValueError("Too many sequences in file (NCBI limit = 4000).")
-    return requests.post(CDSEARCH_URL, files={"queries": handle}, data=SEARCH_PARAMS)
-
-
-def _search_query_ids(ids):
-    """Launch a new CD-Search job from a collection of query IDs.
-
-    Parameters
-    ----------
-    ids : list, tuple
-        Collection of valid NCBI sequence identifiers to be searched.
-
-    Raises
-    ------
-    TypeError
-        If `query_ids` is not a list or tuple.
-    TypeError
-        If values in `query_ids` are not of type `int` or `str`.
+        Neither `query_ids` nor `query_file` provided
     ValueError
-        If neither `query_ids` or `query_file` are specified.
+        Too many sequences were provided (NCBI limits searches at 4000 sequences)
     """
-    if not isinstance(ids, (list, tuple)):
-        raise TypeError("Query IDs must be given in a list or tuple")
-
-    if not all(isinstance(x, (int, str)) for x in ids):
-        raise TypeError("Expected a list/tuple of int/str")
-
-    if len(ids) > 4000:
-        raise ValueError("Too many sequences in file (NCBI limit = 4000).")
-
-    return requests.post(
-        CDSEARCH_URL, params=SEARCH_PARAMS, files={"queries": "\n".join(ids)}
-    )
-
-
-def _search(query_ids=None, query_file=None):
-    """Launch new search with either query IDs or file, then return assigned CDSID."""
-    if query_file and not query_ids:
-        LOG.info("Launching new CDSearch run with: %s", query_file)
-        with open(query_file) as handle:
-            response = _search_query_file(handle)
-    elif query_ids:
-        LOG.info("Launching new CDSearch run on IDs: %s", query_ids)
-        response = _search_query_ids(query_ids)
+    if query_ids:
+        container = _container_from_query_ids(query_ids)
+    elif query_file:
+        container = _container_from_query_file(query_file)
     else:
-        raise ValueError("A query must be specified with query_file OR query_ids")
+        raise ValueError("Expected 'query_ids' or 'query_file'")
+
+    if len(container) > 4000:
+        raise ValueError("Too many sequences (NCBI limit = 4000)")
+
+    return container
+
+
+def launch(query):
+    """Launch new CDSearch run.
+
+    Parameters
+    ----------
+    query : Synthase, SynthaseContainer
+        Sequence/s to be searched. This can be either a single `Synthase` object or
+        multiple `Synthase` objects inside a `SynthaseContainer`. Other objects could be
+        passed to this function as long as they implement a `to_fasta` method that
+        produces a FASTA representation (str) of query sequences.
+
+    Returns
+    -------
+    str
+        CDSearch ID (CDSID) corresponding to the new run. This takes the form:
+        QM3-qcdsearch-XXXXXXXXXXXXXXXX-YYYYYYYYYYYYYYY.
+
+    Raises
+    ------
+    AttributeError
+        `query` object has no `to_fasta` method
+    AttributeError
+        No CDSID was returned
+    """
+
+    try:
+        files = {"queries": query.to_fasta()}
+    except AttributeError:
+        LOG.exception("Expected Synthase or SynthaseContainer")
+        raise
+
+    response = requests.post(CDSEARCH_URL, params=SEARCH_PARAMS, files=files)
+
     try:
         return re.search(r"#cdsid\t(.+?)\n", response.text).group(1)
     except AttributeError:
@@ -169,7 +194,7 @@ def _search(query_ids=None, query_file=None):
         raise
 
 
-def _check_status(cdsid):
+def check(cdsid):
     """Check the status of a running CD-search job.
 
     CD-Search runs are assigned a unique search ID, which typically take the form::
@@ -228,7 +253,7 @@ def _check_status(cdsid):
     raise ValueError(f"Request failed; NCBI returned code {code} ({errors[code]})")
 
 
-def _retrieve_results(cdsid, max_retries=-1, delay=20):
+def retrieve(cdsid, max_retries=-1, delay=20):
     """Poll CDSearch for results.
 
     This method queries the NCBI for results from a CDSearch job corresponding to
@@ -295,7 +320,7 @@ def _retrieve_results(cdsid, max_retries=-1, delay=20):
         else:
             previous = current
         LOG.info("Checking search status...")
-        response = _check_status(cdsid)
+        response = check(cdsid)
         if response:
             LOG.info("Search successfully completed!")
             break
@@ -376,23 +401,38 @@ def CDSearch(
 
     Then, future searches will use the updated value.
     """
+    query = prepare_input(query_ids, query_file)
+
     if not cdsid:
-        cdsid = _search(query_ids=query_ids, query_file=query_file)
+        cdsid = launch(query)
 
     LOG.info("Run ID: %s", cdsid)
     LOG.info("Polling NCBI for results...")
-    results = _retrieve_results(cdsid, delay=delay, max_retries=max_retries)
+    response = retrieve(cdsid, delay=delay, max_retries=max_retries)
 
-    SEARCH_HISTORY.append(
-        {"cdsid": cdsid, "parameters": SEARCH_PARAMS, "results": results}
-    )
+    entry = {
+        "cdsid": cdsid,
+        "parameters": SEARCH_PARAMS,
+        "query": query,
+        "results": results,
+    }
+
+    SEARCH_HISTORY.append(entry)
 
     if output:
-        LOG.info("Writing results to %s", output)
+        LOG.info("Writing CD-Search results table to %s", output)
         with open(output, "w") as handle:
-            handle.write(results.text)
+            handle.write(response.text)
 
-    return results
+    LOG.info("Parsing results for domains...")
+    for header, domains in results.parse(response.text.split("\n")).items():
+        query.get(header).domains = domains
+
+    LOG.info("Classifying synthases...")
+    for synthase in query:
+        classify(synthase)
+
+    return query
 
 
 def efetch_sequences(headers):
@@ -440,7 +480,17 @@ def set_search_params(
     dmode=None,
 ):
     """Set CD-Search search parameters."""
-    for kw, value in locals().items():
+    params = {
+        "db": db,
+        "smode": smode,
+        "useid1": useid1,
+        "compbasedadj": compbasedadj,
+        "filter": filter,
+        "evalue": evalue,
+        "maxhit": maxhit,
+        "dmode": dmode,
+    }
+    for key, value in params.items():
         if not value:
             continue
-        SEARCH_PARAMS[kw] = value
+        SEARCH_PARAMS[key] = value
