@@ -7,12 +7,10 @@ Cameron Gilchrist
 """
 
 from pathlib import Path
-from operator import attrgetter
 
 import pytest
 
 from synthaser.models import Synthase, Domain
-from synthaser.figure import Figure
 from synthaser import results
 
 
@@ -43,7 +41,7 @@ def test_group_overlapping_hits():
     assert groups == [domains[0:2], [domains[2]], domains[3:]]
 
 
-def test_ResultParser_parse_row():
+def test_parse_row():
     row = "\t\t\t0\t100\t0\t0\t\tPKS_KS\t\t"
     domain = results._domain_from_row(row)
     assert domain.start == 0
@@ -53,7 +51,7 @@ def test_ResultParser_parse_row():
     assert domain.domain == "PKS_KS"
 
 
-def test_ResultParser_parse_row_not_key_domain():
+def test_parse_row_not_key_domain():
     row = "\t\t\t0\t100\t0\t\t\tTESTING\t\t"
     with pytest.raises(ValueError):
         results._domain_from_row(row)
@@ -79,13 +77,6 @@ def synthase(domains):
 
 
 @pytest.fixture
-def anid():
-    """Returns a Figure from query FASTA and CDSearch results table in tests directory."""
-    with open(TEST_DIR / "anid.json") as js:
-        return Figure.from_json(js)
-
-
-@pytest.fixture
 def test_results():
     return {
         "one": [
@@ -108,13 +99,6 @@ def test_parse_cdsearch_table(tmp_path, test_results):
         assert results._parse_cdsearch_table(r) == test_results
 
 
-def test_synthases_from_results(test_results):
-    assert results._synthases_from_results(test_results) == [
-        Synthase(header="one", type="Type I PKS", subtype="PKS-like"),
-        Synthase(header="two", type="NRPS", subtype="NRPS-like"),
-    ]
-
-
 def test_filter_domains():
     domains = [
         Domain(type="C", domain="Condensation", start=0, end=100, evalue=1.0),
@@ -129,19 +113,8 @@ def test_filter_domains():
     ]
 
 
-def test_parse(anid):
-    anid_tsv = TEST_DIR / "anid.tsv"
-    with anid_tsv.open() as tsv:
-        anid_synthases = results.parse(tsv)
-    anid_synthases.sort(key=attrgetter("header"))
-    anid.synthases.sort(key=attrgetter("header"))
-    assert anid_synthases == anid.synthases
-
-
-def test_parse_results(anid):
-    anid_tsv = TEST_DIR / "anid.tsv"
-    with anid_tsv.open() as tsv:
-        anid_synthases = results.parse(tsv)
-    anid_synthases.sort(key=attrgetter("header"))
-    anid.synthases.sort(key=attrgetter("header"))
-    assert anid_synthases == anid.synthases
+def test_filter_results(test_results):
+    assert results._filter_results(test_results) == {
+        "one": [Domain(type="KS", domain="PKS_KS", start=0, end=100, evalue=0.0)],
+        "two": [Domain(type="A", domain="A_NRPS", start=0, end=100, evalue=0.0)],
+    }

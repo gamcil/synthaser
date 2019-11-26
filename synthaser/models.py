@@ -298,15 +298,6 @@ class SynthaseContainer(UserList):
         copy.extend(container)
         return copy
 
-    def __append__(self, synthase):
-        if not isinstance(synthase, Synthase):
-            raise TypeError("Expected Synthase object")
-        self.data.append(synthase)
-
-    def __extend__(self, synthases):
-        for synthase in synthases:
-            self.append(synthase)
-
     def __str__(self):
         return "\n\n".join(
             "{}\n{}\n{}".format(
@@ -316,6 +307,15 @@ class SynthaseContainer(UserList):
             )
             for subtype, group in self.subtypes()
         )
+
+    def append(self, synthase):
+        if not isinstance(synthase, Synthase):
+            raise TypeError("Expected Synthase object")
+        self.data.append(synthase)
+
+    def extend(self, synthases):
+        for synthase in synthases:
+            self.append(synthase)
 
     def get(self, header):
         for synthase in self:
@@ -337,6 +337,8 @@ class SynthaseContainer(UserList):
         """Iterate over Synthase objects inside the SynthaseContainer, grouped by some
         attribute.
         """
+        if attr not in ("type", "subtype"):
+            raise ValueError("Expected 'type' or 'subtype'")
         synthases = sorted(self.data, key=lambda s: getattr(s, attr))
         for key, group in groupby(synthases, key=lambda s: getattr(s, attr)):
             yield key, type(self)(group)

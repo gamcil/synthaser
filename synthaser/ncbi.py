@@ -117,6 +117,9 @@ def _container_from_query_ids(ids):
     new SynthaseContainer. Otherwise, expects a file containing a collection of IDs
     each on a new line.
     """
+    if not hasattr(ids, "__iter__"):
+        raise ValueError("Expected iterable")
+
     if len(ids) == 1 and Path(ids[0]).exists():
         # This is a file
         with Path(ids[0]).open() as fp:

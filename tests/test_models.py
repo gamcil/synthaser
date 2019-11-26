@@ -6,7 +6,7 @@ Test suite for models.py
 
 import pytest
 
-from synthaser.models import Synthase, Domain, extract_all_domains
+from synthaser.models import SynthaseContainer, Synthase, Domain
 
 
 def test_Domain_slice():
@@ -64,8 +64,8 @@ def test_domain_eq(domains):
         domains[0] == 1
 
 
-def test_synthase_repr(synthase):
-    assert repr(synthase) == "test\tKS-AT"
+def test_synthase_str(synthase):
+    assert str(synthase) == "test\tKS-AT"
 
 
 def test_synthase_eq(synthase):
@@ -128,15 +128,118 @@ def test_Synthase_architecture(synthase):
     assert synthase.architecture == "KS-AT"
 
 
-def test_extract_all_domains():
-    one = Synthase(
-        header="one", sequence="AAAAABBBBB", domains=[Domain(type="KS", start=1, end=5)]
+@pytest.fixture
+def sc():
+    return SynthaseContainer(
+        [
+            Synthase(
+                header="one",
+                sequence="AAAAABBBBB",
+                domains=[Domain(type="KS", start=1, end=5)],
+                type="one",
+                subtype="one",
+            ),
+            Synthase(
+                header="two",
+                sequence="BBBBBAAAAA",
+                domains=[Domain(type="KS", start=6, end=10)],
+                type="two",
+                subtype="two",
+            ),
+        ]
     )
-    two = Synthase(
-        header="two",
-        sequence="BBBBBAAAAA",
-        domains=[Domain(type="KS", start=6, end=10)],
-    )
-    assert extract_all_domains([one, two]) == {
+
+
+def test_SynthaseContainer_extract_domains(sc):
+    assert sc.extract_domains() == {
         "KS": [("one_KS_0", "AAAAA"), ("two_KS_0", "AAAAA")]
     }
+
+
+def test_SynthaseContainer_add_typeerror(sc):
+    with pytest.raises(TypeError):
+        sc += 1
+
+
+def test_SynthaseContainer_add(sc):
+    one, two = sc[:1], sc[1:]
+    assert one + two == sc
+
+
+def test_SynthaseContainer_append_typerror(sc):
+    with pytest.raises(TypeError):
+        sc.append(1)
+
+
+def test_SynthaseContainer_append(sc):
+    new = Synthase(header="test", sequence="abc")
+    sc.append(new)
+    assert len(sc) == 3
+
+
+def test_SynthaseContainer_extend_typeerror(sc):
+    with pytest.raises(TypeError):
+        sc.extend([1])
+
+
+def test_SynthaseContainer_extend(sc):
+    new = Synthase(header="test", sequence="abc")
+    sc.extend([new])
+    assert len(sc) == 3
+
+
+def test_SynthaseContainer_get_keyerror(sc):
+    with pytest.raises(KeyError):
+        sc.get("fake")
+
+
+def test_SynthaseContainer_get(sc):
+    assert sc.get("two") == sc[1]
+
+
+def test_SynthaseContainer_attr_iter_valueerror(sc):
+    with pytest.raises(ValueError):
+        dict(sc._attr_iter("fake"))
+
+
+def test_SynthaseContainer_attr_iter(sc):
+    result = {"one": sc[:1], "two": sc[1:]}
+    assert dict(sc._attr_iter("type")) == result
+    assert dict(sc._attr_iter("subtype")) == result
+
+
+def test_SynthaseContainer_subtypes(sc):
+    result = {"one": sc[:1], "two": sc[1:]}
+    assert dict(sc.subtypes()) == result
+
+
+def test_SynthaseContainer_types(sc):
+    result = {"one": sc[:1], "two": sc[1:]}
+    assert dict(sc.types()) == result
+
+
+def test_SynthaseContainer_to_fasta(sc):
+    assert sc.to_fasta() == ">one\nAAAAABBBBB\n>two\nBBBBBAAAAA"
+
+
+def test_SynthaseContainer_from_sequences(sc):
+    sequences = {"one": "AAAAABBBBB", "two": "BBBBBAAAAA"}
+    sc2 = SynthaseContainer.from_sequences(sequences)
+    assert (sc[0].header, sc[0].sequence) == (sc2[0].header, sc2[0].sequence)
+    assert (sc[1].header, sc[1].sequence) == (sc2[1].header, sc2[1].sequence)
+
+
+def test_SynthaseContainer_str(sc):
+    assert str(sc) == "one\n---\none\tKS\n\ntwo\n---\ntwo\tKS"
+
+
+def test_SynthaseContainer_json_serialisation(sc, tmp_path):
+    d = tmp_path / "test.json"
+
+    with d.open("w") as fp:
+        sc.to_json(fp)
+
+    with d.open() as fp:
+        sc2 = SynthaseContainer.from_json(fp)
+
+    assert sc == sc2

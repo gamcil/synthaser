@@ -450,16 +450,18 @@ def _filter_domain_group(group, by="evalue"):
         the type of this `Domain` will be set to that rule (e.g. Condensation ->
         Epimerization).
     """
-    if by == "bitscore":
-        container, *_group = sorted(
-            group,
-            key=lambda d: d.bitscore / BITSCORE_THRESHOLDS[d.domain],
-            reverse=True,
-        )
-    elif by == "evalue":
-        container, *_group = sorted(group, key=lambda d: d.evalue)
-    elif by == "length":
-        container, *_group = sorted(group, key=lambda d: d.end - d.start, reverse=True)
+    key_functions = {
+        "bitscore": (lambda d: d.bitscore / BITSCORE_THRESHOLDS[d.domain], True),
+        "evalue": (lambda d: d.evalue, False),
+        "length": (lambda d: d.end - d.start, True),
+    }
+
+    if by not in key_functions:
+        raise ValueError("Expected 'bitscore', 'evalue' or 'length'")
+
+    key, reverse = key_functions[by]
+
+    container, *_group = sorted(group, key=key, reverse=reverse)
 
     for domain in _group:
         for new_type, rule in ADJACENCY_RULES.items():
