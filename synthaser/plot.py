@@ -190,6 +190,11 @@ def generate_legend_elements(synthases):
 def generate_figure(ax, synthases):
     """Generate a synthaser plot on a given matplotlib axes."""
 
+    # Set the title
+    ax.set_title(
+        f"Domain architectures of {len(synthases)} synth(et)ases", fontsize="large"
+    )
+
     # Sort synthases, get subtype groups and domain types
     synthases = sorted(synthases, key=lambda s: s.sequence_length, reverse=True)
     groups = sorted(
@@ -229,18 +234,47 @@ def generate_figure(ax, synthases):
     for synthase in synthases:
         plot_gene_arrow(ax, synthase)
 
+
+def generate_legend(ax, synthases):
     # Create legend elements for each domain actually in the synthases
     legend_elements = generate_legend_elements(synthases)
 
     # Make the legend
-    ax.legend(
+    legend = ax.legend(
         handles=legend_elements,
         fancybox=True,
         columnspacing=1,
-        loc="best",
-        ncol=2,
+        loc=8,
+        bbox_to_anchor=(0.5, 0),
+        bbox_transform=ax.figure.transFigure,
+        ncol=8,
         fontsize="smaller",
     )
+
+    return legend
+
+
+def initial_figure_size(synthases, width=6):
+    """Calculate initial figure height and subplot spacing."""
+
+    # Number of legend elements is the # of unique domain colours
+    legend_elements = len(
+        set(
+            COLOURS[domain.type]
+            for synthase in synthases
+            for domain in synthase.domains
+        )
+    )
+    legend_nrows = math.ceil(legend_elements / 8)
+
+    # Approximate size (inches) for plot elements
+    synths = len(synthases)
+    groups = len(set(s.subtype for s in synthases))
+    arrows = 0.15 * (synths + groups)
+    legend = 1.4 + 0.4 * (legend_nrows - 1)  # add extra for >1 row legends
+
+    # Initial figure size based on elements
+    return width, arrows + legend
 
 
 def plot(synthases, file=None, dpi=300):
@@ -259,15 +293,17 @@ def plot(synthases, file=None, dpi=300):
     The `dpi` argument is ignored if not saving to file, and effectively ignored by
     matplotlib if given with a file format that doesn't use it (e.g. svg).
     """
-    figure, axes = plt.subplots(figsize=(7, 0.3 * len(synthases)))
-    figure.suptitle("synthaser", fontsize="x-large", weight="bold")
-    axes.set_title(
-        f"Domain architectures of {len(synthases)} synth(et)ases", fontsize="large"
-    )
+
+    width, height = initial_figure_size(synthases)
+
+    figure, axes = plt.subplots(figsize=(width, height), tight_layout=True)
 
     generate_figure(axes, synthases)
+    generate_legend(axes, synthases)
+
+    plt.tight_layout()
 
     if not file:
-        figure.show()
+        plt.show()
     else:
-        figure.savefig(file, dpi=dpi, bbox_inches="tight")
+        plt.savefig(file, dpi=dpi, bbox_inches="tight")
