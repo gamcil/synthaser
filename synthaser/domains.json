@@ -1,0 +1,257 @@
+{
+    "PKS_KS": {
+        "length": 298,
+        "bitscore": 241.079,
+        "type": "KS"
+    },
+    "PKS": {
+        "length": 421,
+        "bitscore": 167.35,
+        "type": "KS"
+    },
+    "SCP-x_thiolase": {
+        "length": 375,
+        "bitscore": 147.795,
+        "type": "KS"
+    },
+    "HMG-CoA-S_euk": {
+        "length": 457,
+        "bitscore": 790.507,
+        "type": "KS"
+    },
+    "thiolase": {
+        "length": 386,
+        "bitscore": 222.354,
+        "type": "KS"
+    },
+    "PLN02287": {
+        "length": 452,
+        "bitscore": 632.955,
+        "type": "KS"
+    },
+    "PRK07314": {
+        "length": 411,
+        "bitscore": 601.393,
+        "type": "KS"
+    },
+    "fabF": {
+        "length": 407,
+        "bitscore": 525.512,
+        "type": "KS"
+    },
+    "FabB": {
+        "length": 412,
+        "bitscore": 152.8,
+        "type": "KS"
+    },
+    "CLF": {
+        "length": 399,
+        "bitscore": 503.431,
+        "type": "KS"
+    },
+    "KAS_I_II": {
+        "length": 406,
+        "bitscore": 285.201,
+        "type": "KS"
+    },
+    "CHS_like": {
+        "length": 361,
+        "bitscore": 242.515,
+        "type": "KS"
+    },
+    "KAS_III": {
+        "length": 320,
+        "bitscore": 212.4,
+        "type": "KS"
+    },
+    "PKS_AT": {
+        "length": 298,
+        "bitscore": 201.477,
+        "type": "AT"
+    },
+    "Acyl_transf_1": {
+        "length": 319,
+        "bitscore": 342.53,
+        "type": "AT"
+    },
+    "PKS_ER": {
+        "length": 287,
+        "bitscore": 250.768,
+        "type": "ER"
+    },
+    "enoyl_red": {
+        "length": 293,
+        "bitscore": 129.997,
+        "type": "ER"
+    },
+    "MDR4": {
+        "length": 305,
+        "bitscore": 268.471,
+        "type": "ER"
+    },
+    "ETR_like": {
+        "length": 323,
+        "bitscore": 224.079,
+        "type": "ER"
+    },
+    "enoyl_reductase_like":{
+        "length": 339,
+        "bitscore": 202.814,
+        "type": "ER"
+    },
+    "KR": {
+        "length": 180,
+        "bitscore": 149.632,
+        "type": "KR"
+    },
+    "PKS_KR": {
+        "length": 287,
+        "bitscore": 83.3005,
+        "type": "KR"
+    },
+    "KR_fFAS_SDR_c_like": {
+        "length": 259,
+        "bitscore": 368.441,
+        "type": "KR"
+    },
+    "Thioesterase": {
+        "length": 224,
+        "bitscore": 157.139,
+        "type": "TE"
+    },
+    "Aes": {
+        "length": 312,
+        "bitscore": 59.5636,
+        "type": "TE"
+    },
+    "Thioester-redct": {
+        "length": 367,
+        "bitscore": 305.493,
+        "type": "TR"
+    },
+    "SDR_e1": {
+        "length": 290,
+        "bitscore": 229.845,
+        "type": "TR"
+    },
+    "Methyltransf_11": {
+        "length": 95,
+        "bitscore": 53.8265,
+        "type": "MT"
+    },
+    "Methyltransf_12": {
+        "length": 98,
+        "bitscore": 40.8165,
+        "type": "MT"
+    },
+    "Methyltransf_23": {
+        "length": 162,
+        "bitscore": 61.2786,
+        "type": "MT"
+    },
+    "Methyltransf_25": {
+        "length": 97,
+        "bitscore": 34.8626,
+        "type": "MT"
+    },
+    "Methyltransf_31": {
+        "length": 150,
+        "bitscore": 67.449,
+        "type": "MT"
+    },
+    "AdoMet_MTases": {
+        "length": 107,
+        "bitscore": 29.3203,
+        "type": "MT"
+    },
+    "SmtA": {
+        "length": 257,
+        "bitscore": 28.7117,
+        "type": "MT"
+    },
+    "PKS_DH": {
+        "length": 167,
+        "bitscore": 76.8814,
+        "type": "DH"
+    },
+    "PS-DH": {
+        "length": 289,
+        "bitscore": 128.631,
+        "type": "DH"
+    },
+    "PT_fungal_PKS": {
+        "length": 324,
+        "bitscore": 202.466,
+        "type": "PT"
+    },
+    "PKS_PP": {
+        "length": 86,
+        "bitscore": 33.3777,
+        "type": "ACP"
+    },
+    "PP-binding": {
+        "length": 67,
+        "bitscore": 28.2759,
+        "type": "ACP"
+    },
+    "AcpP": {
+        "length": 80,
+        "bitscore": 26.8736,
+        "type": "ACP"
+    },
+    "AcpS": {
+        "length": 127,
+        "bitscore": 88.0777,
+        "type": "ACPS"
+    },
+    "acpS": {
+        "length": 125,
+        "bitscore": 87.108,
+        "type": "ACPS"
+    },
+    "ACPS": {
+        "length": 104,
+        "bitscore": 31.8159,
+        "type": "ACPS"
+    },
+    "SAT": {
+        "length": 239,
+        "bitscore": 129.59,
+        "type": "SAT"
+    },
+    "Condensation": {
+        "length": 455,
+        "bitscore": 345.862,
+        "type": "C"
+    },
+    "A_NRPS": {
+        "length": 444,
+        "bitscore": 356.838,
+        "type": "A"
+    },
+    "AMP-binding": {
+        "length": 361,
+        "bitscore": 185.114,
+        "type": "A"
+    },
+    "NRPS-para261": {
+        "length": 153,
+        "bitscore": 159.361,
+        "type": "E"
+    },
+    "Carn_acyltransf": {
+        "length": 575,
+        "bitscore": 255.925,
+        "type": "cAT"
+    },
+    "mcbC-like_oxidoreductase": {
+        "length": 180,
+        "bitscore": 62.4272,
+        "type": "Ox"
+    },
+    "RimI": {
+        "length": 177,
+        "bitscore": 43.8319,
+        "type": "KAT"
+    }
+}
