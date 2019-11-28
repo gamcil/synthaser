@@ -58,7 +58,11 @@ against the entire list of Domain objects in a Synthase.
 
 
 import logging
+import json
 import re
+
+from pathlib import Path
+
 from collections import defaultdict
 from operator import attrgetter
 
@@ -68,150 +72,33 @@ from synthaser.models import Domain
 LOG = logging.getLogger(__name__)
 
 
-DOMAINS = {
-    "KS": [
-        "PKS_KS",
-        "PKS",
-        "FabB",
-        "CLF",
-        "KAS_I_II",
-        "CHS_like",
-        "KAS_III",
-        "SCP-x_thiolase",  # SCP thiolase
-        "HMG-CoA-S_euk",  # HMG-CoA synthase
-        "thiolase",  # Thiolase I
-        "PLN02287",
-        "PRK07314",  # Thiolase II
-        "fabF",
-    ],
-    "AT": ["PKS_AT", "Acyl_transf_1"],
-    "ER": ["PKS_ER", "enoyl_red"],
-    "KR": ["KR", "PKS_KR", "KR_fFAS_SDR_c_like"],
-    "TE": ["Thioesterase", "Aes"],
-    "TR": ["Thioester-redct", "SDR_e1"],
-    "MT": [
-        "Methyltransf_11",
-        "Methyltransf_12",
-        "Methyltransf_23",
-        "Methyltransf_25",
-        "Methyltransf_31",
-        "AdoMet_MTases",
-        "SmtA",
-    ],
-    "DH": ["PKS_DH", "PS-DH"],
-    "PT": ["PT_fungal_PKS"],
-    "ACP": ["PKS_PP", "PP-binding", "AcpP"],
-    "ACPS": ["ACPS", "AcpS", "acpS"],
-    "SAT": ["SAT"],
-    "C": ["Condensation"],
-    "A": ["A_NRPS", "AMP-binding"],
-    "E": ["NRPS-para261"],
-    "cAT": ["Carn_acyltransf"],
-    "Ox": ["mcbC-like_oxidoreductase"],  # NRPS oxydation domain
-    "KAT": ["RimI"],  # N-epsilon-Lysine acetyltransferase
-}
+DOMAINS = {}
 
-CD_LENGTHS = {
-    "PKS_KS": 298,
-    "PKS": 421,
-    "SCP-x_thiolase": 375,
-    "HMG-CoA-S_euk": 457,
-    "thiolase": 386,
-    "PLN02287": 452,
-    "PRK07314": 411,
-    "fabF": 407,
-    "FabB": 412,
-    "CLF": 399,
-    "KAS_I_II": 406,
-    "CHS_like": 361,
-    "KAS_III": 320,
-    "PKS_AT": 298,
-    "Acyl_transf_1": 319,
-    "PKS_ER": 287,
-    "enoyl_red": 293,
-    "KR": 180,
-    "PKS_KR": 287,
-    "KR_fFAS_SDR_c_like": 259,
-    "Thioesterase": 224,
-    "Aes": 312,
-    "Thioester-redct": 367,
-    "SDR_e1": 290,
-    "Methyltransf_11": 95,
-    "Methyltransf_12": 98,
-    "Methyltransf_23": 162,
-    "Methyltransf_25": 97,
-    "Methyltransf_31": 150,
-    "AdoMet_MTases": 107,
-    "SmtA": 257,
-    "PKS_DH": 167,
-    "PS-DH": 289,
-    "PT_fungal_PKS": 324,
-    "PKS_PP": 86,
-    "PP-binding": 67,
-    "AcpP": 80,
-    "AcpS": 127,
-    "acpS": 125,
-    "ACPS": 104,
-    "SAT": 239,
-    "Condensation": 455,
-    "A_NRPS": 444,
-    "AMP-binding": 361,
-    "NRPS-para261": 153,
-    "Carn_acyltransf": 575,
-    "mcbC-like_oxidoreductase": 180,
-    "RimI": 177,
-}
 
-BITSCORE_THRESHOLDS = {
-    "PKS_KS": 241.079,
-    "PKS": 167.35,
-    "SCP-x_thiolase": 147.795,
-    "HMG-CoA-S_euk": 790.507,
-    "thiolase": 222.354,
-    "PLN02287": 632.955,
-    "PRK07314": 601.393,
-    "fabF": 525.512,
-    "FabB": 152.8,
-    "CLF": 503.431,
-    "KAS_I_II": 285.201,
-    "CHS_like": 242.515,
-    "KAS_III": 212.4,
-    "PKS_AT": 201.477,
-    "Acyl_transf_1": 342.53,
-    "PKS_ER": 250.768,
-    "enoyl_red": 129.997,
-    "KR": 149.632,
-    "PKS_KR": 83.3005,
-    "KR_fFAS_SDR_c_like": 368.441,
-    "Thioesterase": 157.139,
-    "Aes": 59.5636,
-    "Thioester-redct": 305.493,
-    "SDR_e1": 229.845,
-    "Methyltransf_11": 53.8265,
-    "Methyltransf_12": 40.8165,
-    "Methyltransf_23": 61.2786,
-    "Methyltransf_25": 34.8626,
-    "Methyltransf_31": 67.449,
-    "AdoMet_MTases": 29.3203,
-    "SmtA": 28.7117,
-    "PKS_DH": 76.8814,
-    "PS-DH": 128.631,
-    "PT_fungal_PKS": 202.466,
-    "PKS_PP": 33.3777,
-    "PP-binding": 28.2759,
-    "AcpP": 26.8736,
-    "AcpS": 88.0777,
-    "acpS": 87.108,
-    "ACPS": 31.8159,
-    "SAT": 129.59,
-    "Condensation": 345.862,
-    "A_NRPS": 356.838,
-    "AMP-binding": 185.114,
-    "NRPS-para261": 159.361,
-    "Carn_acyltransf": 255.925,
-    "mcbC-like_oxidoreductase": 62.4272,
-    "RimI": 43.8319,
-}
+def load_domain_json(json_file):
+    """Load domain information from JSON.
+
+    Expects a file with format:
+
+    .. code-block::
+
+        {
+            "PKS_KS": {
+                "length": 298,
+                "bitscore": 241.079,
+                "type": "KS"
+            },
+            ...
+        }
+    """
+    with open(json_file) as fp:
+        rules = json.load(fp)
+        DOMAINS.clear()
+        DOMAINS.update(rules)
+
+
+# Load defaults, stored in synthaser/domains.json
+load_domain_json(Path(__file__).parent / "domains.json")
 
 ADJACENCY_RULES = {
     "E": lambda a, b: len(a) > len(b) and a.type == "C" and b.type == "E"
@@ -247,18 +134,16 @@ def _domain_from_row(row):
         If the domain in this row is not in the DOMAINS dictionary.
     """
     _, _, _, start, end, evalue, bitscore, _, domain, *_ = row.split("\t")
-    for domain_type, domains in DOMAINS.items():
-        if domain not in domains:
-            continue
-        return Domain(
-            type=domain_type,
-            domain=domain,
-            start=int(start),
-            end=int(end),
-            evalue=float(evalue),
-            bitscore=float(bitscore),
-        )
-    raise ValueError(f"'{domain}' not a synthaser key domain")
+    if domain not in DOMAINS:
+        raise ValueError(f"'{domain}' not a synthaser key domain")
+    return Domain(
+        type=DOMAINS[domain]["type"],
+        domain=domain,
+        start=int(start),
+        end=int(end),
+        evalue=float(evalue),
+        bitscore=float(bitscore),
+    )
 
 
 def _parse_cdsearch_table(handle):
@@ -350,7 +235,7 @@ def _is_fragmented_domain(one, two, coverage_pct=0.5, tolerance_pct=0.1):
     if one.type != two.type:
         raise ValueError("Expected Domain instances of same type")
 
-    pssm_length = CD_LENGTHS[one.domain]
+    pssm_length = DOMAINS[one.domain]["length"]
     coverage = pssm_length * coverage_pct
     tolerance = pssm_length * tolerance_pct
     one_length, two_length = len(one), len(two)
@@ -413,13 +298,19 @@ def _filter_domains(domains, by="evalue", coverage_pct=0.5, tolerance_pct=0.1):
                 break
         i += 1
 
-    return [
-        # Final filter, get rid of any obviously wrong, small hits; do here, not when
-        # parsing table, so we don't discard potentially fragmented single domains
-        domain
-        for domain in domains
-        if len(domain) > 0.2 * CD_LENGTHS[domain.domain]
-    ]
+    for domain in domains:
+        if len(domain) < 0.6 * DOMAINS[domain.domain]["length"]:
+            domain.truncated = True
+
+    return domains
+
+    # return [
+    #     # Final filter, get rid of any obviously wrong, small hits; do here, not when
+    #     # parsing table, so we don't discard potentially fragmented single domains
+    #     domain
+    #     for domain in domains
+    #     if len(domain) > 0.2 * CD_LENGTHS[domain.domain]
+    # ]
 
 
 def _filter_domain_group(group, by="evalue"):
@@ -451,7 +342,7 @@ def _filter_domain_group(group, by="evalue"):
         Epimerization).
     """
     key_functions = {
-        "bitscore": (lambda d: d.bitscore / BITSCORE_THRESHOLDS[d.domain], True),
+        "bitscore": (lambda d: d.bitscore / DOMAINS[d.domain]["bitscore"], True),
         "evalue": (lambda d: d.evalue, False),
         "length": (lambda d: d.end - d.start, True),
     }
