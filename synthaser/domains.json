@@ -124,6 +124,11 @@
         "bitscore": 59.5636,
         "type": "TE"
     },
+    "Abhydrolase_1": {
+        "length": 245,
+        "bitscore": 93.7236,
+        "type": "TE"
+    },
     "Thioester-redct": {
         "length": 367,
         "bitscore": 305.493,
