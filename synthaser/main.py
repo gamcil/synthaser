@@ -91,6 +91,7 @@ def get_arguments(args):
     inputs.add_argument(
         "-qf",
         "--query_file",
+        type=argparse.FileType("r"),
         help="Path to FASTA file containing query synthase sequences",
     )
     inputs.add_argument(
@@ -110,7 +111,10 @@ def get_arguments(args):
         " the value provided as a file name for directly saving to SVG.",
     )
     outputs.add_argument(
-        "-dpi", "--svg_dpi", help="DPI to use when saving figure (def. 300)"
+        "-dpi",
+        "--svg_dpi",
+        help="DPI to use when saving figure (def. 300)",
+        default=300,
     )
     outputs.add_argument(
         "-json",
