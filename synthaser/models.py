@@ -193,7 +193,7 @@ class Synthase:
     @property
     def architecture(self):
         """Return the domain architecture of this synthase as a hyphen separated string."""
-        return "-".join(domain.type for domain in self.domains)
+        return "-".join(str(domain) for domain in self.domains)
 
     @property
     def domain_types(self):
@@ -204,7 +204,14 @@ class Domain:
     """Store a conserved domain hit."""
 
     def __init__(
-        self, type=None, domain=None, start=None, end=None, evalue=None, bitscore=None
+        self,
+        type=None,
+        domain=None,
+        start=None,
+        end=None,
+        evalue=None,
+        bitscore=None,
+        truncated=False,
     ):
         self.type = type
         self.domain = domain
@@ -212,9 +219,12 @@ class Domain:
         self.end = end
         self.evalue = evalue
         self.bitscore = bitscore
+        self.truncated = truncated
 
-    def __repr__(self):
-        return f"{self.domain} [{self.type}] {self.start}-{self.end}"
+    def __str__(self):
+        if self.truncated:
+            return f"({self.type})"
+        return self.type
 
     def __eq__(self, other):
         if isinstance(other, type(self)):
@@ -265,6 +275,9 @@ class Domain:
             "domain": self.domain,
             "start": self.start,
             "end": self.end,
+            "evalue": self.evalue,
+            "bitscore": self.bitscore,
+            "truncated": self.truncated,
         }
 
     def to_json(self):
