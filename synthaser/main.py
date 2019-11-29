@@ -33,6 +33,7 @@ def synthaser(
     evalue=None,
     maxhit=None,
     dmode=None,
+    domain_file=None,
 ):
     """Run synthaser."""
 
@@ -59,13 +60,16 @@ def synthaser(
         )
 
         synthases = ncbi.CDSearch(
-            query_file=query_file, query_ids=query_ids, cdsid=cdsid
+            query_file=query_file,
+            query_ids=query_ids,
+            cdsid=cdsid,
+            domain_file=domain_file,
         )
 
     print(synthases, flush=True)
 
     if json_file and not _json_loaded:
-        LOG.info("Serialising Figure to JSON: %s", json_file)
+        LOG.info("Serialising synthases to JSON: %s", json_file)
         with open(json_file, "w") as fp:
             synthases.to_json(fp)
 
@@ -174,6 +178,14 @@ def get_arguments(args):
         help="What level of CD-Search hits to report (def. full)",
     )
 
+    other = parser.add_argument_group("Other arguments")
+    other.add_argument(
+        "-df",
+        "--domain_file",
+        type=argparse.FileType(),
+        help="JSON file containing alternate domain targets.",
+    )
+
     args = parser.parse_args(args)
 
     if not any([args.query_ids, args.query_file, args.json_file]):
@@ -200,6 +212,7 @@ def main():
         evalue=args.evalue,
         maxhit=args.maxhit,
         dmode=args.dmode,
+        domain_file=args.domain_file,
     )
 
 
