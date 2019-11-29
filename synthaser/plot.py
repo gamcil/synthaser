@@ -5,10 +5,14 @@ Plot domain architectures using matplotlib.
 
 import math
 
+from collections import namedtuple
+
 import numpy as np
 
 from matplotlib import pyplot as plt
-from matplotlib.patches import Patch
+from matplotlib import rcParams
+from matplotlib.patches import Patch, PathPatch
+from matplotlib.path import Path
 
 plt.style.use("default")
 
@@ -134,7 +138,7 @@ def assign_synthase_indices(groups):
     The indices are staggered by synthase subtype group for visual separation in the
     plot.
     """
-    index = 1
+    index = 0
     for group in groups:
         for synthase in group:
             setattr(synthase, "_index", index)
@@ -150,19 +154,35 @@ def generate_yticklabels(groups):
     subsequent synthase group to match the indices of plotted genes.
     """
     labels = []
-    for group in groups:
-        labels.append(group[0].subtype)
+    for i, group in enumerate(groups):
+        if i > 0:
+            labels.append("")
         labels.extend([synthase.header for synthase in group])
     return labels
 
 
-def format_yticklabels(ax, types):
-    """Set different formatting for synthase types and headers in yticklabels."""
-    for label in ax.get_yticklabels():
-        if label.get_text() in types:
-            label.set(color="black", fontsize="medium", weight="bold")
-        else:
-            label.set(color="grey", fontsize="small")
+def annotate_groups(ax, groups):
+    """Add synthase type annotation to axes."""
+    for group in groups:
+        # Grab the first and last Synthase in the group
+        first, last = group[0], group[-1]
+
+        # Calculate coordinates for forming the bar
+        top_x, top_y = first.sequence_length + 60, first._index
+        out_x = top_x + 50
+        bot_y = last._index
+
+        # MOVETO start coordinates, then LINETO for each subsequent point
+        points = [(top_x, top_y), (out_x, top_y), (out_x, bot_y), (top_x, bot_y)]
+        codes = [Path.MOVETO, Path.LINETO, Path.LINETO, Path.LINETO]
+
+        # Form the Patch and add it to the axes
+        patch = PathPatch(Path(points, codes), facecolor="none", lw=1)
+        ax.add_patch(patch)
+
+        # Now, add the text next to bar
+        mid_y = bot_y + (top_y - bot_y) / 2
+        ax.text(out_x + 50, mid_y, first.subtype)
 
 
 def generate_legend_elements(synthases):
@@ -187,7 +207,7 @@ def generate_legend_elements(synthases):
     ]
 
 
-def generate_figure(ax, synthases):
+def draw_figure(ax, synthases):
     """Generate a synthaser plot on a given matplotlib axes."""
 
     # Set the title
@@ -200,32 +220,31 @@ def generate_figure(ax, synthases):
     groups = sorted(
         subtype_iter(synthases), key=lambda g: g[0].sequence_length, reverse=True
     )
-    types = set(group[0].subtype for group in groups)
 
     # Initialise the figure and adjust axes
-    # Sets initial height of the figure as 0.25 * total synthases + groups (inches).
-    total = len(synthases) + len(groups) - 1
+    total = len(synthases) + len(groups) - 2
     label = generate_yticklabels(groups)
     ytick = np.arange(total + 1)
 
+    # Adjust the yticks; all synthases are plotted as a unique index, with an empty
+    # index used as inter-group spaces
     ax.set_yticks(ytick)
     ax.set_yticklabels(label)
     ax.set_ylim([total + 1, -1])
 
-    # Round x limit up to nearest 500
+    # Round x limit up to nearest 500 for prettier scale
     ax.set_xlim([0, math.ceil(synthases[0].sequence_length / 500) * 500])
 
-    # Adjust ticks
+    # Adjust x tick formatting, hide y ticks
     ax.tick_params(axis="x", which="major", width=1, length=5, labelbottom=True)
-    ax.tick_params(axis="y", which="both", width=0, length=0)
+    ax.tick_params(
+        axis="y", which="both", width=0, length=0, labelsize="small", labelcolor="grey"
+    )
 
     # Hide left, top and right borders
     ax.spines["left"].set_visible(False)
     ax.spines["right"].set_visible(False)
     ax.spines["top"].set_visible(False)
-
-    # Format yticklabels
-    format_yticklabels(ax, types)
 
     # Assign unique indices to each synthase
     assign_synthase_indices(groups)
@@ -234,8 +253,11 @@ def generate_figure(ax, synthases):
     for synthase in synthases:
         plot_gene_arrow(ax, synthase)
 
+    # Annotate groups
+    annotate_groups(ax, groups)
 
-def generate_legend(ax, synthases):
+
+def draw_legend(ax, synthases):
     # Create legend elements for each domain actually in the synthases
     legend_elements = generate_legend_elements(synthases)
 
@@ -254,27 +276,47 @@ def generate_legend(ax, synthases):
     return legend
 
 
-def initial_figure_size(synthases, width=6):
-    """Calculate initial figure height and subplot spacing."""
+def adjust_subplots(event):
+    """Callback function to adjust subplot padding upon resize.
 
-    # Number of legend elements is the # of unique domain colours
-    legend_elements = len(
-        set(
-            COLOURS[domain.type]
-            for synthase in synthases
-            for domain in synthase.domains
-        )
+    First calls tight_layout to adjust side margins, then calculates top/bottom margins
+    dynamically using title and legend heights, respectively.
+
+    This is bound to `resize_event`, such that resizing the matplotlib figure viewer
+    automatically scales the figure.
+    """
+    # Initial tight layout
+    plt.tight_layout()
+
+    # Get current figure/axes, make sure its drawn to enable window_extent
+    figure, axes = plt.gcf(), plt.gca()
+    figure.canvas.draw()
+
+    # Adjust top/bottom spacing based on legend, title size
+    legend = axes.get_legend().get_window_extent()
+    figure.subplots_adjust(
+        top=(event.height - 26) / event.height,
+        bottom=(legend.y1 - legend.y0 + 40) / event.height,
     )
-    legend_nrows = math.ceil(legend_elements / 8)
 
-    # Approximate size (inches) for plot elements
+
+def calculate_initial_figsize(synthases):
+    """Calculate a rough initial figure size based on the synthases.
+
+    Default width = 7.
+    For height, sum:
+        (total synthases + total groups - 1) * 0.2
+        total rows in legend * 0.6
+        0.3
+
+    Try to account for total y indices in the plot (synthases + inter-group spaces)
+    as well as variable row number legends, and a bit of extra padding for the title.
+    """
     synths = len(synthases)
     groups = len(set(s.subtype for s in synthases))
-    arrows = 0.15 * (synths + groups)
-    legend = 1.4 + 0.4 * (legend_nrows - 1)  # add extra for >1 row legends
-
-    # Initial figure size based on elements
-    return width, arrows + legend
+    dtypes = len(set(COLOURS[d.type] for s in synthases for d in s.domains))
+    lgrows = math.ceil(dtypes / 8)
+    return 7, (synths + groups - 1) * 0.2 + lgrows * 0.6 + 0.3
 
 
 def plot(synthases, file=None, dpi=300):
@@ -294,16 +336,23 @@ def plot(synthases, file=None, dpi=300):
     matplotlib if given with a file format that doesn't use it (e.g. svg).
     """
 
-    width, height = initial_figure_size(synthases)
+    rcParams["savefig.dpi"] = dpi
 
-    figure, axes = plt.subplots(figsize=(width, height), tight_layout=True)
+    # Rough guess at initial figure size
+    width, height = calculate_initial_figsize(synthases)
 
-    generate_figure(axes, synthases)
-    generate_legend(axes, synthases)
+    # Set up the figure and plot
+    figure, axes = plt.subplots(figsize=(width, height))
+    draw_figure(axes, synthases)
+    draw_legend(axes, synthases)
 
-    plt.tight_layout()
+    # Adjust subplots with mock event, bind function to resize event for dynamic adjustments
+    Event = namedtuple("Event", ["width", "height"])
+    event = Event(width * figure.dpi, height * figure.dpi)
+    adjust_subplots(event)
+    figure.canvas.mpl_connect("resize_event", adjust_subplots)
 
     if not file:
         plt.show()
     else:
-        plt.savefig(file, dpi=dpi, bbox_inches="tight")
+        plt.savefig(file)
