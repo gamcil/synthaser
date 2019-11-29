@@ -385,7 +385,13 @@ def history():
 
 
 def CDSearch(
-    query_file=None, query_ids=None, cdsid=None, output=None, delay=20, max_retries=-1
+    query_file=None,
+    query_ids=None,
+    cdsid=None,
+    output=None,
+    delay=20,
+    max_retries=-1,
+    domain_file=None,
 ):
     """Launch a new CD-Search job.
 
@@ -427,6 +433,10 @@ def CDSearch(
         LOG.info("Writing CD-Search results table to %s", output)
         with open(output, "w") as handle:
             handle.write(response.text)
+
+    if domain_file:
+        LOG.info("Reading domain rules from: %s", domain_file.name)
+        results.load_domain_json(domain_file)
 
     LOG.info("Parsing results for domains...")
     for header, domains in results.parse(response.text.split("\n")).items():
