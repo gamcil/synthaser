@@ -299,18 +299,10 @@ def _filter_domains(domains, by="evalue", coverage_pct=0.5, tolerance_pct=0.1):
         i += 1
 
     for domain in domains:
-        if len(domain) < 0.6 * DOMAINS[domain.domain]["length"]:
+        if len(domain) < 0.5 * DOMAINS[domain.domain]["length"]:
             domain.truncated = True
 
     return domains
-
-    # return [
-    #     # Final filter, get rid of any obviously wrong, small hits; do here, not when
-    #     # parsing table, so we don't discard potentially fragmented single domains
-    #     domain
-    #     for domain in domains
-    #     if len(domain) > 0.2 * CD_LENGTHS[domain.domain]
-    # ]
 
 
 def _filter_domain_group(group, by="evalue"):
