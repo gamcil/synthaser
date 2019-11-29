@@ -16,8 +16,24 @@ def test_Domain_slice():
 
 
 def test_Domain_serialisation(tmp_path):
-    domain = Domain(start=0, end=100, type="KS", domain="PKS_KS")
-    result_dict = {"start": 0, "end": 100, "type": "KS", "domain": "PKS_KS"}
+    domain = Domain(
+        start=0,
+        end=100,
+        type="KS",
+        domain="PKS_KS",
+        evalue=0.01,
+        bitscore=100,
+        truncated=True,
+    )
+    result_dict = {
+        "start": 0,
+        "end": 100,
+        "type": "KS",
+        "domain": "PKS_KS",
+        "evalue": 0.01,
+        "bitscore": 100,
+        "truncated": True,
+    }
     assert domain.to_dict() == result_dict
 
     json_file = tmp_path / "json"
@@ -36,7 +52,7 @@ def test_Domain_serialisation(tmp_path):
 def domains():
     return [
         Domain(start=1, end=90, type="KS", domain="PKS_KS"),
-        Domain(start=10, end=80, type="KS", domain="PKS"),
+        Domain(start=10, end=80, type="KS", domain="PKS", truncated=True),
         Domain(start=100, end=200, type="AT", domain="PKS_AT"),
         Domain(start=130, end=190, type="AT", domain="Acyl_transf_1"),
     ]
@@ -53,8 +69,9 @@ def synthase(domains):
     )
 
 
-def test_domain_repr(domains):
-    assert repr(domains[0]) == "PKS_KS [KS] 1-90"
+def test_domain_str(domains):
+    assert str(domains[0]) == "KS"
+    assert str(domains[1]) == "(KS)"
 
 
 def test_domain_eq(domains):
@@ -85,8 +102,24 @@ def test_Synthase_serialisation(synthase, domains, tmp_path):
         "header": "test",
         "sequence": "A" * 200,
         "domains": [
-            {"start": 1, "end": 90, "type": "KS", "domain": "PKS_KS"},
-            {"start": 100, "end": 200, "type": "AT", "domain": "PKS_AT"},
+            {
+                "start": 1,
+                "end": 90,
+                "type": "KS",
+                "domain": "PKS_KS",
+                "evalue": None,
+                "bitscore": None,
+                "truncated": False,
+            },
+            {
+                "start": 100,
+                "end": 200,
+                "type": "AT",
+                "domain": "PKS_AT",
+                "evalue": None,
+                "bitscore": None,
+                "truncated": False,
+            },
         ],
         "type": "PKS",
         "subtype": "NR-PKS",
