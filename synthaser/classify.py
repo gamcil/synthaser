@@ -278,7 +278,11 @@ def classify(synthase):
     First, assign a broad biosynthetic type to the Synthase (PKS, NRPS, Hybrid).
     Then, further classification is performed on Type I PKSs.
     """
-    synthase.type = assign_broad_type(synthase.domains)
+    try:
+        synthase.type = assign_broad_type(synthase.domains)
+    except ValueError:
+        return
+
     if synthase.type == "Type I PKS":
         synthase.subtype = assign_T1PKS_subtype(synthase.domain_types)
     else:
