@@ -24,6 +24,7 @@ def synthaser(
     figure=None,
     svg_dpi=300,
     json_file=None,
+    output=None,
     cdsid=None,
     db=None,
     smode=None,
@@ -66,7 +67,7 @@ def synthaser(
             domain_file=domain_file,
         )
 
-    print(synthases, flush=True)
+    print(synthases, flush=True, file=output)
 
     if json_file and not _json_loaded:
         LOG.info("Serialising synthases to JSON: %s", json_file)
@@ -125,6 +126,14 @@ def get_arguments(args):
         "--json_file",
         help="Serialise Synthase objects to JSON. If this is specified, the synthases"
         " can be loaded from this file using the synthaser Python API.",
+    )
+    outputs.add_argument(
+        "-o",
+        "--output",
+        nargs="?",
+        type=argparse.FileType("w"),
+        default=sys.stdout,
+        help="Save domain architecture summary to file",
     )
 
     search = parser.add_argument_group("CD-Search parameters")
@@ -203,6 +212,7 @@ def main():
         figure=args.figure,
         svg_dpi=args.svg_dpi,
         json_file=args.json_file,
+        output=args.output,
         cdsid=args.cdsid,
         db=args.db,
         smode=args.smode,
