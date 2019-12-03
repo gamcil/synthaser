@@ -24,6 +24,7 @@ def synthaser(
     figure=None,
     svg_dpi=300,
     json_file=None,
+    long_form=False,
     output=None,
     cdsid=None,
     db=None,
@@ -67,7 +68,10 @@ def synthaser(
             domain_file=domain_file,
         )
 
-    print(synthases, flush=True, file=output)
+    if long_form:
+        print(synthases.to_long(), flush=True, file=output)
+    else:
+        print(synthases, flush=True, file=output)
 
     if json_file and not _json_loaded:
         LOG.info("Serialising synthases to JSON: %s", json_file)
@@ -134,6 +138,12 @@ def get_arguments(args):
         type=argparse.FileType("w"),
         default=sys.stdout,
         help="Save domain architecture summary to file",
+    )
+    outputs.add_argument(
+        "-lf",
+        "--long_form",
+        action="store_true",
+        help="Return output in long data format",
     )
 
     search = parser.add_argument_group("CD-Search parameters")
@@ -213,6 +223,7 @@ def main():
         svg_dpi=args.svg_dpi,
         json_file=args.json_file,
         output=args.output,
+        long_form=args.long_form,
         cdsid=args.cdsid,
         db=args.db,
         smode=args.smode,
