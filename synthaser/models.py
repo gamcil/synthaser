@@ -179,6 +179,16 @@ class Synthase:
                 setattr(synthase, key, value)
         return synthase
 
+    def to_long(self, delimiter=","):
+        fields = [
+            self.header,
+            str(self.sequence_length),
+            self.type,
+            self.subtype,
+            self.architecture,
+        ]
+        return delimiter.join(fields)
+
     def to_json(self):
         return json.dumps(self.to_dict())
 
@@ -321,6 +331,23 @@ class SynthaseContainer(UserList):
             for subtype, group in self.subtypes()
         )
 
+    def to_long(self, delimiter=",", headers=True):
+        """Generate summary of the container in long data format.
+
+        e.g.
+            Synthase    Length (aa)  Type         Subtype    Architecture
+            SEQ001.1    1000         Type I PKS   HR-PKS     KS-AT-DH-ER-KR-ACP
+
+        NOTE: actual output is character delimited, not human readable.
+        """
+        synthases = [synthase.to_long(delimiter) for synthase in self]
+
+        if headers:
+            _headers = ("Synthase", "Length (aa)", "Type", "Subtype", "Architecture")
+            synthases.insert(0, delimiter.join(_headers))
+
+        return "\n".join(synthases)
+
     def append(self, synthase):
         if not isinstance(synthase, Synthase):
             raise TypeError("Expected Synthase object")
@@ -381,7 +408,7 @@ class SynthaseContainer(UserList):
         yield from self._attr_iter("type")
 
     def extract_domains(self):
-        """Extract domain sequence from Synthase objects in this container.
+        """Extract domain sequences from Synthase objects in this container.
 
         For example, given a `SynthaseContainer` containing `Synthase` objects:
 
