@@ -19,6 +19,7 @@ plt.style.use("default")
 
 COLOURS = {
     "ACP": "#084BC6",
+    "ACPS": "#285DC0",
     "KS": "#08B208",
     "SAT": "#808080",
     "KR": "#089E4B",
