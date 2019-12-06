@@ -221,7 +221,7 @@ class Domain:
         end=None,
         evalue=None,
         bitscore=None,
-        truncated=False,
+        partial=False,
     ):
         self.type = type
         self.domain = domain
@@ -229,10 +229,10 @@ class Domain:
         self.end = end
         self.evalue = evalue
         self.bitscore = bitscore
-        self.truncated = truncated
+        self.partial = partial
 
     def __str__(self):
-        if self.truncated:
+        if self.partial in ("C", "N", "NC"):
             return f"({self.type})"
         return self.type
 
@@ -287,7 +287,7 @@ class Domain:
             "end": self.end,
             "evalue": self.evalue,
             "bitscore": self.bitscore,
-            "truncated": self.truncated,
+            "partial": self.partial,
         }
 
     def to_json(self):
