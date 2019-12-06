@@ -114,6 +114,11 @@
         "bitscore": 368.441,
         "type": "KR"
     },
+    "PKS_TE": {
+        "length": 212,
+        "bitscore": 155.846,
+        "type": "TE"
+    },
     "Thioesterase": {
         "length": 224,
         "bitscore": 157.139,
