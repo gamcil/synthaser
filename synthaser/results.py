@@ -133,7 +133,7 @@ def domain_from_row(row):
     ValueError
         If the domain in this row is not in the DOMAINS dictionary.
     """
-    _, _, _, start, end, evalue, bitscore, _, domain, *_ = row.split("\t")
+    *_, start, end, evalue, bitscore, _, domain, partial, _ = row.split("\t")
     if domain not in DOMAINS:
         raise ValueError(f"'{domain}' not a synthaser key domain")
     return Domain(
@@ -143,6 +143,7 @@ def domain_from_row(row):
         end=int(end),
         evalue=float(evalue),
         bitscore=float(bitscore),
+        partial=partial,
     )
 
 
@@ -169,10 +170,16 @@ def parse_rpsbproc(handle):
         r"DOMAINS\n(.+?)ENDDOMAINS",
         re.DOTALL,
     )
-    return {
-        match.group(1): [domain_from_row(row) for row in match.group(2).split("\n")]
-        for match in query_pattern.finditer(stdout)
-    }
+    domains = defaultdict(list)
+    for match in query_pattern.finditer(stdout):
+        query = match.group(1)
+        for row in match.group(2).split("\n"):
+            try:
+                domain = domain_from_row(row)
+            except ValueError:
+                continue
+            domains[query].append(domain)
+    return domains
 
 
 def parse_cdsearch(handle):
@@ -329,11 +336,11 @@ def filter_domains(domains, by="evalue", coverage_pct=0.5, tolerance_pct=0.1):
                 break
         i += 1
 
-    for domain in domains:
-        if len(domain) < 0.5 * DOMAINS[domain.domain]["length"]:
-            domain.truncated = True
-
-    return domains
+    return [  # Remove any obviously wrong/weak annotations
+        domain
+        for domain in domains
+        if domain.bitscore > 0.3 * DOMAINS[domain.domain]["bitscore"]
+    ]
 
 
 def choose_representative_domain(group, by="evalue"):
@@ -386,72 +393,45 @@ def choose_representative_domain(group, by="evalue"):
     return container
 
 
-def hits_overlap(a, b, threshold=0.2):
-    """Return True if Domain overlap is greater than threshold * domain size.
-
-    The specified domains typically should share no overlap, tending to be discrete with
-    inter-domain gaps. Subsequently, the default threshold is set low. However, it is
-    not 0, as to accomodate SOME level of overlap.
-
-    Parameters
-    ----------
-    a : Domain
-        First Domain object.
-    b : Domain
-        Second Domain object.
-    threshold : int
-        Minimum percentage to classify two Domains as overlapping. By default,
-        `threshold` is set to 0.9, i.e. two Domains are considered as overlapping if
-        the total amount of overlap is greater than 90% of either Domain hit.
-
-    Returns
-    -------
-    bool
-        True if Domain overlap exceeds threshold, False if not.
-    """
-    start, end = max(a.start, b.start), min(a.end, b.end)
-    overlap = max(0, end - start)
-    a_threshold = threshold * (a.end - a.start)
-    b_threshold = threshold * (b.end - b.start)
-    return overlap >= a_threshold or overlap >= b_threshold
-
-
-def group_overlapping_hits(domains, threshold=0.2):
+def group_overlapping_hits(domains):
     """Iterator that groups Domain objects based on overlapping locations.
 
     Parameters
     ----------
-    domains : list, tuple
-        Domain objects to be grouped.
-    threshold : float
-        See hits_overlap().
+    domains : iterable
+        Collection of Domain objects belonging to a Synthase
 
     Yields
     ------
     group : list
-        A group of overlapping Domain objects, as computed by hits_overlap().
+        Group of overlapping Domain objects
     """
-    domains.sort(key=attrgetter("start"))
-    i, total = 0, len(domains)
-    while i < total:
-        current = domains[i]  # grab current hit
-        group = [current]  # start group
-        if i == total - 1:  # if current hit is the last, yield
+    sorted_domains = sorted(domains, key=attrgetter("start"))
+
+    if not sorted_domains:
+        return
+
+    # Initialise first group and initial upper bound
+    first = sorted_domains.pop(0)
+    group, border = [first], first.end
+
+    for domain in sorted_domains:
+
+        # New domain overlaps current run, so save and set new upper bound
+        if domain.start <= border:
+            group.append(domain)
+            border = max(border, domain.end)
+
+        # Current run is over; yield and reset
+        else:
             yield group
-            break
-        for j in range(i + 1, total):  # iterate rest
-            future = domains[j]  # grab next hit
-            if hits_overlap(current, future, threshold):
-                group.append(future)  # add if contained
-            else:
-                yield group  # else yield to iterator
-                break
-            if j == total - 1:  # if reached the end, yield
-                yield group
-        i += len(group)  # move index ahead of last group
+            group, border = [domain], domain.end
+
+    # End the final run
+    yield group
 
 
-def parse(handle, **kwargs):
+def parse(handle, kind="cdsearch", **kwargs):
     """Parse CD-Search results.
 
     Any additional kwargs are passed to `synthases_from_results`.
@@ -468,4 +448,8 @@ def parse(handle, **kwargs):
     list:
         A list of Synthase objects parsed from the results file.
     """
-    return filter_results(parse_cdsearch(handle), **kwargs)
+    if kind == "cdsearch":
+        return filter_results(parse_cdsearch(handle), **kwargs)
+    if kind == "rpsblast":
+        return filter_results(parse_rpsbproc(handle), **kwargs)
+    raise ValueError("Expected 'cdsearch' or 'rpsblast'")
