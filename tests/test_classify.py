@@ -96,7 +96,7 @@ def test_classify_synthase():
             [Domain(t) for t in ("KS", "AT", "ACP", "C", "A", "ACP", "TR")],
             "KS-AT-ACP-C-A-T-R",
         ),
-        ("NRPS", [Domain(t) for t in ("ACP", "C", "A", "ACP", "TR")], "T-C-A-T-R"),
+        ("NRPS", [Domain(t) for t in ("ACP", "C", "A", "ACP", "TR")], "ACP-C-A-T-R"),
     ],
 )
 def test_rename_NRPS_domains(type, domains, result):
