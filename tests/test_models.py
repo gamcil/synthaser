@@ -23,7 +23,7 @@ def test_Domain_serialisation(tmp_path):
         domain="PKS_KS",
         evalue=0.01,
         bitscore=100,
-        truncated=True,
+        partial="NC",
     )
     result_dict = {
         "start": 0,
@@ -32,7 +32,7 @@ def test_Domain_serialisation(tmp_path):
         "domain": "PKS_KS",
         "evalue": 0.01,
         "bitscore": 100,
-        "truncated": True,
+        "partial": "NC",
     }
     assert domain.to_dict() == result_dict
 
@@ -46,15 +46,16 @@ def test_Domain_serialisation(tmp_path):
     assert from_json.end == 100
     assert from_json.type == "KS"
     assert from_json.domain == "PKS_KS"
+    assert from_json.partial == "NC"
 
 
 @pytest.fixture
 def domains():
     return [
-        Domain(start=1, end=90, type="KS", domain="PKS_KS"),
-        Domain(start=10, end=80, type="KS", domain="PKS", truncated=True),
-        Domain(start=100, end=200, type="AT", domain="PKS_AT"),
-        Domain(start=130, end=190, type="AT", domain="Acyl_transf_1"),
+        Domain(start=1, end=90, type="KS", domain="PKS_KS", partial="-"),
+        Domain(start=10, end=80, type="KS", domain="PKS", partial="NC"),
+        Domain(start=100, end=200, type="AT", domain="PKS_AT", partial="-"),
+        Domain(start=130, end=190, type="AT", domain="Acyl_transf_1", partial="-"),
     ]
 
 
@@ -109,7 +110,7 @@ def test_Synthase_serialisation(synthase, domains, tmp_path):
                 "domain": "PKS_KS",
                 "evalue": None,
                 "bitscore": None,
-                "truncated": False,
+                "partial": "-",
             },
             {
                 "start": 100,
@@ -118,7 +119,7 @@ def test_Synthase_serialisation(synthase, domains, tmp_path):
                 "domain": "PKS_AT",
                 "evalue": None,
                 "bitscore": None,
-                "truncated": False,
+                "partial": "-",
             },
         ],
         "type": "PKS",
