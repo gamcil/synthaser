@@ -192,8 +192,6 @@ def assign_NRPS_type(domains):
     return "NRPS-like"
 
 
-# TODO: adjust for architectures with weird orders, e.g. PKS-NRPS that starts with A
-#       before the PKS module ... try to specifically recognize an NRPS module
 def rename_NRPS_domains(synthase):
     """Replace domain types in Hybrid and NRPS Synthases.
 
@@ -227,13 +225,19 @@ def rename_NRPS_domains(synthase):
     """
     if synthase.type not in ("Hybrid", "NRPS"):
         raise ValueError("Expected 'Hybrid' or 'NRPS'")
-    start, replace = 0, {"ACP": "T", "TR": "R"}
-    if synthase.type == "Hybrid":
-        for start, domain in enumerate(synthase.domains):
-            if domain.type in ("C", "E"):
-                break
-    for domain in synthase.domains[start:]:
-        if domain.type in replace:
+
+    module = "PKS"  # or NRPS
+    replace = {"ACP": "T", "TR": "R"}
+
+    for domain in synthase.domains:
+        # Determine if we're in the PKS or NRPS module
+        if domain.type in ("A", "C"):
+            module = "NRPS"
+        elif domain.type in ("KS", "AT"):
+            module = "PKS"
+
+        # Only change domain names if we're in the NRPS module
+        if module == "NRPS" and domain.type in replace:
             domain.type = replace[domain.type]
 
 
