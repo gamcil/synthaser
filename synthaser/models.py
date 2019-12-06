@@ -80,6 +80,10 @@ entries in the file are converted back to Python objects.
 from collections import defaultdict, UserList
 from itertools import groupby
 import json
+import logging
+
+
+LOG = logging.getLogger(__name__)
 
 
 class Synthase:
@@ -422,11 +426,14 @@ class SynthaseContainer(UserList):
         """
         combined = defaultdict(list)
         for synthase in self:
-            for type, sequences in synthase.extract_domains().items():
-                combined[type].extend(
-                    (f"{synthase.header}_{type}_{i}", sequence)
-                    for i, sequence in enumerate(sequences)
-                )
+            try:
+                for type, sequences in synthase.extract_domains().items():
+                    combined[type].extend(
+                        (f"{synthase.header}_{type}_{i}", sequence)
+                        for i, sequence in enumerate(sequences)
+                    )
+            except ValueError:
+                LOG.warning("%s has no domains", synthase.header)
         return dict(combined)
 
     def add_sequences(self, sequences):
