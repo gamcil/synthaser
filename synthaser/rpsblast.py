@@ -46,9 +46,13 @@ from datetime import datetime
 
 LOG = logging.getLogger(__name__)
 
-for dependency in ("rpsblast", "rpsbproc"):
-    if not shutil.which(dependency):
-        raise RuntimeError(f"{dependency} not found on system $PATH")
+
+def get_program_path(program):
+    """Get full path to a program on system PATH."""
+    path = shutil.which(program)
+    if not program:
+        raise OSError(f"{program} not found on system $PATH")
+    return Path(path).resolve()
 
 
 def download_database(directory, flavour="Cdd"):
@@ -166,6 +170,8 @@ def getdb(database, folder):
 
 def rpsblast(query, database, cpu=2):
     """Run rpsblast on a query file against a database."""
+    path = get_program_path("rpsblast")
+
     params = {
         "-db": database,
         "-comp_based_stats": "1",
@@ -181,7 +187,7 @@ def rpsblast(query, database, cpu=2):
     params = [value for pair in params.items() for value in pair]
 
     process = subprocess.run(
-        ["rpsblast", *params],
+        [path, *params],
         input=query if "-query" not in params else None,
         stdout=subprocess.PIPE,
     )
@@ -201,7 +207,7 @@ def rpsbproc(results):
     The CompletedProcess returned by this function contains a standard CD-Search results
     file, able to be parsed directly by the `results` module.
     """
-    path = Path(shutil.which("rpsbproc")).resolve()
+    path = get_program_path("rpsbproc")
 
     command = [str(path), "-m", "full", "--quiet", "-t", "doms", "-f"]
 
