@@ -8,7 +8,7 @@ import sys
 
 from pathlib import Path
 
-from synthaser import search, rpsblast, ncbi, __version__, plot, models
+from synthaser import search, rpsblast, __version__, plot, models
 
 logging.basicConfig(
     format="[%(asctime)s] %(levelname)s - %(message)s", datefmt="%H:%M:%S"
@@ -52,23 +52,21 @@ def synthaser(
             synthases = models.SynthaseContainer.from_json(fp)
         _json_loaded = True
     else:
-        if mode == "remote":
-            ncbi.set_search_params(
-                database=database,
-                smode=smode,
-                useid1=useid1,
-                compbasedadj=compbasedadj,
-                filter=filter,
-                evalue=evalue,
-                maxhit=maxhit,
-                dmode=dmode,
-            )
-
         synthases = search.search(
             mode=mode,
             query_file=query_file,
             query_ids=query_ids,
             cdsid=cdsid,
+            domain_file=domain_file,
+            results_file=results_file,
+            database=database,
+            smode=smode,
+            useid1=useid1,
+            compbasedadj=compbasedadj,
+            filter=filter,
+            evalue=evalue,
+            maxhit=maxhit,
+            dmode=dmode,
             domain_file=domain_file,
             results_file=results_file,
         )

@@ -125,8 +125,40 @@ def search(
     max_retries=-1,
     database=None,
     cpu=2,
+    **kwargs,
 ):
-    """..."""
+    """Run a synthaser search.
+
+    CD-Search parameters can be given as kwargs which are passed on to _remote.
+
+    Parameters
+    ----------
+    mode: str
+        synthaser search mode ('local' or 'remote')
+    query_ids: str, file
+        Collection of NCBI sequence identifiers to analyse
+    query_file: file
+        Open FASTA file handle
+    domain_file: file
+        Custom domain rule JSON file to use when parsing results
+    results_file: file
+        Results file from a previous CDSearch/RPSBLAST search
+    cdsid: str
+        CDSearch ID from a previous search
+    delay: int
+        Time delay (s) between polling NCBI for results (def. 20)
+    max_retries: int
+        Maximum number of polling attempts before exiting (def. -1)
+    database: str
+        rpsblast database to use in local searches
+    cpu: int
+        Number of threads to use in rpsblast
+
+    Returns
+    -------
+    models.SynthaseContainer
+        Collection of models.Synthase objects representing query sequences
+    """
 
     query = prepare_input(query_ids, query_file)
 
@@ -138,7 +170,7 @@ def search(
         # If results_file is specified, first assume it's an actual results file
         with open(results_file) as rf:
             LOG.info("Reading results from: %s", results_file)
-            for header, domains in results.parse(rf).items():
+            for header, domains in results.parse(rf, mode=mode).items():
                 query.get(header).domains = domains
 
     except (TypeError, FileNotFoundError):
@@ -151,6 +183,8 @@ def search(
                 cdsid=cdsid,
                 delay=delay,
                 max_retries=max_retries,
+                database=database,
+                **kwargs,
             )
         elif mode == "local":
             handle = _local(query, database, cpu=cpu, output=results_file)
@@ -158,7 +192,7 @@ def search(
             raise ValueError("Expected 'remote' or 'local'")
 
         LOG.info("Parsing results for domains...")
-        for header, domains in results.parse(handle).items():
+        for header, domains in results.parse(handle, mode=mode).items():
             query.get(header).domains = domains
 
     LOG.info("Classifying synthases...")
@@ -168,25 +202,11 @@ def search(
     return query
 
 
-def _remote(query, cdsid=None, delay=20, max_retries=-1, output=None):
-    """Launch a new CD-Search job.
+def _remote(query, cdsid=None, delay=20, max_retries=-1, output=None, **kwargs):
+    """Launch new CD-Search job, poll results and return a faux 'handle' for parsing."""
 
-    This function takes a query FASTA file or collection of NCBI sequence
-    identifiers, sends them to the CD-Search server and then polls for response until
-    one is returned.
+    ncbi.set_search_params(**kwargs)
 
-    >>> results = CDSearch(query_file='path/to/query.fasta')
-    >>> results = CDSearch(query_ids=['XP_000000001.1', ... ])
-    >>> results
-    <Response [200]>
-
-    Search parameters are specified in `SEARCH_PARAMS`. For example, to adjust the
-    e-value cutoff used in the search, simply change it there:
-
-    >>> SEARCH_PARAMS['evalue'] = 2.0
-
-    Then, future searches will use the updated value.
-    """
     if not cdsid:
         LOG.info("Launching new CD-Search run")
         cdsid = ncbi.launch(query)
@@ -208,7 +228,7 @@ def _remote(query, cdsid=None, delay=20, max_retries=-1, output=None):
 
 
 def _local(query, database, cpu=2, output=None, domain_file=None):
-    """Run RPSBLAST."""
+    """Run rpsblast against a database and return a faux 'handle' for parsing."""
     LOG.info("Starting RPSBLAST")
     process = rpsblast.search(query.to_fasta().encode(), database, cpu)
 
