@@ -80,6 +80,6 @@ def test_search_bad_response(monkeypatch):
     monkeypatch.setattr(search, "_container_from_query_ids", response)
 
     with requests_mock.Mocker() as m, pytest.raises(AttributeError):
-        # In case of empty response, or response where regex pattern is not matched
+        # RuntimeError In case of empty response, or response where regex pattern is not matched
         m.post(ncbi.CDSEARCH_URL, text="")
         search.search(mode="remote", query_ids=query_ids)
