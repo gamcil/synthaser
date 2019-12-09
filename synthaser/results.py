@@ -431,7 +431,7 @@ def group_overlapping_hits(domains):
     yield group
 
 
-def parse(handle, mode="cdsearch", **kwargs):
+def parse(handle, mode="remote", **kwargs):
     """Parse CD-Search results.
 
     Any additional kwargs are passed to `synthases_from_results`.
@@ -448,8 +448,8 @@ def parse(handle, mode="cdsearch", **kwargs):
     list:
         A list of Synthase objects parsed from the results file.
     """
-    if mode == "cdsearch":
+    if mode == "remote":
         return filter_results(parse_cdsearch(handle), **kwargs)
-    if mode == "rpsblast":
+    if mode == "local":
         return filter_results(parse_rpsbproc(handle), **kwargs)
-    raise ValueError("Expected 'cdsearch' or 'rpsblast'")
+    raise ValueError("Expected 'remote' or 'local'")

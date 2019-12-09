@@ -67,8 +67,6 @@ def synthaser(
             evalue=evalue,
             maxhit=maxhit,
             dmode=dmode,
-            domain_file=domain_file,
-            results_file=results_file,
         )
 
     if long_form:
@@ -206,6 +204,7 @@ def get_arguments(args):
 
     grp_search = sub_search.add_argument_group("Search options")
     grp_search.add_argument(
+        "-m",
         "--mode",
         choices=["local", "remote"],
         default="remote",
@@ -288,7 +287,7 @@ def get_arguments(args):
     if (
         args.subcommand == "search"
         and args.mode == "remote"
-        and args.database not in ("cdd", "pfam", "smart", "tigrfam", "cog", "kog")
+        and args.database not in (None, "cdd", "pfam", "smart", "tigrfam", "cog", "kog")
     ):
         raise ValueError("Expected 'cdd', 'pfam', 'smart', 'tigrfam', 'cog' or 'kog'")
 

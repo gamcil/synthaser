@@ -172,7 +172,6 @@ def search(
             LOG.info("Reading results from: %s", results_file)
             for header, domains in results.parse(rf, mode=mode).items():
                 query.get(header).domains = domains
-
     except (TypeError, FileNotFoundError):
         # Otherwise, user wants to start a search and save results under that name
         # OR just hasn't specified a results_file -> TypeError
