@@ -336,7 +336,7 @@ def filter_domains(domains, by="evalue", coverage_pct=0.5, tolerance_pct=0.1):
                 break
         i += 1
 
-    return [  # Remove any obviously wrong/weak annotations
+    return [  # Filter any obviously wrong/weak annotations
         domain
         for domain in domains
         if domain.bitscore > 0.3 * DOMAINS[domain.domain]["bitscore"]
@@ -431,7 +431,7 @@ def group_overlapping_hits(domains):
     yield group
 
 
-def parse(handle, kind="cdsearch", **kwargs):
+def parse(handle, mode="cdsearch", **kwargs):
     """Parse CD-Search results.
 
     Any additional kwargs are passed to `synthases_from_results`.
@@ -448,8 +448,8 @@ def parse(handle, kind="cdsearch", **kwargs):
     list:
         A list of Synthase objects parsed from the results file.
     """
-    if kind == "cdsearch":
+    if mode == "cdsearch":
         return filter_results(parse_cdsearch(handle), **kwargs)
-    if kind == "rpsblast":
+    if mode == "rpsblast":
         return filter_results(parse_rpsbproc(handle), **kwargs)
     raise ValueError("Expected 'cdsearch' or 'rpsblast'")
