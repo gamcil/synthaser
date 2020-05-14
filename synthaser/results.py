@@ -38,22 +38,6 @@ in an HR-PKS system (DOI: 10.1002/anie.201705237), we perform the following thre
 Future searches in this environment will then report any instances of this domain.
 Currently, a fairly extensive list of fungal PKS domains is hard-coded into this
 dictionary. Suggestions for more are welcomed via GitHub issues or pull requests.
-
-Finally, rules can be created for filtering of adjacent domains in the `ADJACENCY_RULES`
-dictionary. These rules take the form of lambda functions that accept two Domain objects
-as input and return True/False. This is useful since the CDD does not always have exact
-CDs that match certain synthase domain types. For example, NRPS epimerization (E)
-domains are always detected as condensation (C) domains. However, every NRPS containing
-an E domain (in my observations) also report hits for the NRPS-para261 domain family
-either within (near the end), or immediately after, the C domain hit. Thus, I created an
-adjacency rule to specifically check for this:
-
->>> results.ADJACENCY_RULES['E'] = lambda a, b: len(a) > len(b) and a.type == "C" and b.type == "E"
-
-Here I define a lambda function which will take two Domain objects and return True if
-1) they are C and E domains, and 2) the C is bigger than the E.
-This is checked within both overlapping Domain groups (i.e. look for containment) and
-against the entire list of Domain objects in a Synthase.
 """
 
 
@@ -99,10 +83,6 @@ def load_domain_json(json_file):
 
 # Load defaults, stored in synthaser/domains.json
 load_domain_json(Path(__file__).parent / "domains.json")
-
-ADJACENCY_RULES = {
-    "E": lambda a, b: len(a) > len(b) and a.type == "C" and b.type == "E"
-}
 
 
 def domain_from_row(row):
@@ -328,12 +308,6 @@ def filter_domains(domains, by="evalue", coverage_pct=0.5, tolerance_pct=0.1):
             del domains[i]
             continue
 
-        # Test adjacency rules
-        for new_type, rule in ADJACENCY_RULES.items():
-            if rule(previous, current):
-                previous.type = new_type
-                del domains[i]
-                break
         i += 1
 
     return [  # Filter any obviously wrong/weak annotations
@@ -382,15 +356,7 @@ def choose_representative_domain(group, by="evalue"):
 
     key, reverse = key_functions[by]
 
-    container, *_group = sorted(group, key=key, reverse=reverse)
-
-    for domain in _group:
-        for new_type, rule in ADJACENCY_RULES.items():
-            if rule(container, domain):
-                container.type = new_type
-                return container
-
-    return container
+    return sorted(group, key=key, reverse=reverse)[0]
 
 
 def group_overlapping_hits(domains):
@@ -418,7 +384,8 @@ def group_overlapping_hits(domains):
     for domain in sorted_domains:
 
         # New domain overlaps current run, so save and set new upper bound
-        if domain.start <= border:
+        # Use 10bp to account for slight domain overlap between distinct groups
+        if domain.start + 10 <= border:
             group.append(domain)
             border = max(border, domain.end)
 

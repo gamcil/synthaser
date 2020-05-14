@@ -2,7 +2,7 @@
 
 """
 This module stores all of the routines for classification of Synthase objects into
-biosynthetic categories.
+iosynthetic categories.
 
 The main function provided by this module is `classify`, which accepts a Synthase object
 and runs through all the necessary classification steps for a given synthase type.
@@ -70,14 +70,198 @@ In this case, ACP domains are renamed T, and the thioreductase (TR) is renamed R
 """
 
 
+import logging
+
+
+LOG = logging.getLogger(__name__)
+
+
 PKS_TYPES = {
-    "SCP-x thiolase": ["SCP-x_thiolase"],
+    "Thiolase": ["SCP-x_thiolase", "thiolase", "PLN02287"],
     "HMG-CoA synthase": ["HMG-CoA-S_euk"],
-    "3-ketoacyl-CoA thiolase": ["thiolase", "PLN02287"],
-    "FAS I/II": ["PRK07314", "KAS_I_II", "FabF", "FabB"],
+    "FAS": ["PRK07314", "KAS_I_II", "KAS_III", "FabF", "FabB"],
     "Type I PKS": ["PKS", "PKS_KS"],
-    "Type III PKS": ["CHS_like", "KAS_III"],
+    "Type III PKS": ["CHS_like"],
 }
+
+
+def tester(path):
+    import json
+    from synthaser.models import Domain
+
+    with open(path) as fp:
+        d = json.load(fp)
+        rg = RuleGraph.from_dict(d)
+
+    pks = [
+        Domain(type="KS", domain="PKS_KS"),
+        # Domain(type="KS", domain="PKS_KS_BLAH"),
+        Domain(type="AT", domain="PKS_AT"),
+        Domain(type="ER", domain="PKS_ER"),
+    ]
+
+    nrps = [
+        Domain(type="A"),
+        Domain(type="ACP"),
+        Domain(type="C"),
+    ]
+
+    return rg, pks
+
+
+def _traverse_graph(graph, rules, domains, classifiers=None):
+    """Traverses a rule graph and classifies a domain collection.
+
+    Terminals are lists of rules without children. So, on a terminal,
+    test each rule, breaking on (and saving) the first satisfied.
+    Otherwise, test the current node and recurse its children.
+
+    Args:
+        graph (list, dict): Rule graph to traverse.
+        rules (dict): Rule objects to evaluate on domains.
+        domains (list): Domain objects to classify.
+        classifiers (list): Current classifiers for a Domain collection.
+    """
+    if not classifiers:
+        classifiers = []
+
+    if isinstance(graph, list):
+        for node in graph:
+            if isinstance(node, dict):
+                classifiers = _traverse_graph(node, rules, domains, classifiers)
+                if classifiers:
+                    break
+            else:
+                if rules[node].satisfied_by(domains):
+                    classifiers.append(node)
+                    break
+    else:
+        for node, children in graph.items():
+            if rules[node].satisfied_by(domains):
+                classifiers.append(node)
+                classifiers = _traverse_graph(children, rules, domains, classifiers)
+                break
+
+    return classifiers
+
+
+class RuleGraph:
+    """Hierarchy of classification rules.
+
+    The RuleGraph is used to classify synthases based on their domains.
+    It stores Rule objects, as well as a directed graph controlling the
+    order and hierarchy of classification.
+
+    An example synthaser rule graph looks like:
+    [
+        "Hybrid",
+        {"PKS": ["HR-PKS", "PR-PKS", "NR-PKS"]},
+        "NRPS"
+    ]
+
+    In this example, the "Hybrid" rule is evaluated first. If unsuccessful,
+    the "PKS" rule is evaluated. If this is successful, synthaser recurses
+    into child rules, in which case the "HR-PKS", "PR-PKS" and "NR-PKS" rules
+    can be evaluated, and so on. Each rule name must have a corresponding
+    entry in the rules attribute.
+
+    Note that terminal leaves in the graph are placed in lists, whereas
+    hierarchies are written as dictionaries of lists. This preserves rule
+    order in Python, as well as preventing empty, unnecessary dictionaries
+    at every level.
+
+    Attributes:
+        rules (dict): Collection of synthaser rules.
+        graph (dict): Hierarchy of synthaser rules for classification.
+    """
+
+    def __init__(self, rules=None, graph=None):
+        self.rules = rules if rules else {}
+        self.graph = graph if graph else []
+
+    @classmethod
+    def from_dict(cls, d):
+        return cls(
+            rules={rule["name"]: Rule(**rule) for rule in d["rules"]},
+            graph=d["graph"]
+        )
+
+    def classify(self, domains):
+        return _traverse_graph(self.graph, self.rules, domains)
+
+
+class Rule:
+    """A classification rule.
+
+    Attributes:
+        name (str): Name given to proteins satisfying this rule.
+        domains (list): Domain types required to satisfy rule.
+        filters (dict): Specific CDD families for each domain type.
+        evaluator (str): Evaluatable rule satisfaction statement.
+    """
+
+    def __init__(self, name=None, domains=None, filters=None, evaluator=None):
+        self.name = name if name else ""
+        self.domains = domains if domains else []
+        self.filters = filters if filters else {}
+        self.evaluator = evaluator if evaluator else ""
+
+    def evaluate(self, conditions):
+        """Evaluates the rules evaluator string given evaluated conditions.
+
+        Iterates backwards to avoid bad substitutions in larger (>=10) indices.
+        e.g. "0 and 1 and ... and 13" --> "False and True and ... and True3"
+        """
+        evaluator = self.evaluator
+        for idx, condition in reversed(list(enumerate(conditions))):
+            evaluator = evaluator.replace(str(idx), str(condition))
+        return eval(evaluator)
+
+    def valid_family(self, domain):
+        """Checks a given domain matches a specified CDD family in the rule.
+
+        If no families have been specified for the given domain type, this
+        function will return True (i.e. any family of the type is accepted).
+        """
+        if domain.type in self.filters:
+            return domain.domain in self.filters[domain.type]
+        return True
+
+    def satisfied_by(self, domains):
+        """Evaluates this rule against a collection of domains.
+
+        Checks that:
+        1) required domain types are represented in the supplied domains, and
+        2) domains are of the desired CDD families, if any are specified.
+
+        Placeholders in the evaluator string are then replaced by their
+        respective booleans, and evaluated.
+
+        Once a domain in the supplied domains has matched one in the rule, it
+        cannot be matched to another in the rule. This enables rules based on
+        counts of domains (e.g. multi-modular PKS w/ 2 KS domains).
+        """
+        LOG.debug("Evaluating", self.name, "against", [d.type for d in domains])
+        seen = []
+        conditions = []
+        for rule_domain in self.domains:
+            match = False
+            for domain in domains:
+                if domain in seen:
+                    continue
+                if domain.type == rule_domain and self.valid_family(domain):
+                    seen.append(domain)
+                    match = True
+                    break
+            conditions.append(match)
+        return self.evaluate(conditions)
+
+
+def classify(synthases):
+    rg = RuleGraph()
+    for synthase in synthases:
+        rg.classify(synthase)
+
 
 
 def assign_PKS_type(domains):
@@ -121,6 +305,7 @@ def assign_PKS_type(domains):
     """
     domain_types = [domain.type for domain in domains]
     ks = domains[domain_types.index("KS")].domain
+
     if domain_types.count("KS") >= 2:
         return "multi-modular PKS"
     for type, conserved_domains in PKS_TYPES.items():
@@ -226,7 +411,7 @@ def rename_NRPS_domains(synthase):
     if synthase.type not in ("Hybrid", "NRPS"):
         raise ValueError("Expected 'Hybrid' or 'NRPS'")
 
-    module = "PKS"  # or NRPS
+    module = "NRPS" if synthase.type == "NRPS" else "PKS"
     replace = {"ACP": "T", "TR": "R"}
 
     for domain in synthase.domains:
@@ -276,7 +461,7 @@ def assign_broad_type(domains):
     raise ValueError("Could not find an identifying domain")
 
 
-def classify(synthase):
+def classify_old(synthase):
     """Classify a Synthase.
 
     First, assign a broad biosynthetic type to the Synthase (PKS, NRPS, Hybrid).
