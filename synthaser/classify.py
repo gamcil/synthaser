@@ -69,7 +69,7 @@ A-T-C-A-T-C-R
 In this case, ACP domains are renamed T, and the thioreductase (TR) is renamed R.
 """
 
-
+import json
 import logging
 
 
@@ -106,7 +106,7 @@ def tester(path):
         Domain(type="C"),
     ]
 
-    return rg, pks
+    return rg, nrps
 
 
 def _traverse_graph(graph, rules, domains, classifiers=None):
@@ -114,7 +114,7 @@ def _traverse_graph(graph, rules, domains, classifiers=None):
 
     Terminals are lists of rules without children. So, on a terminal,
     test each rule, breaking on (and saving) the first satisfied.
-    Otherwise, test the current node and recurse its children.
+    Otherwise, test the current node and traverse its children.
 
     Args:
         graph (list, dict): Rule graph to traverse.
@@ -133,15 +133,16 @@ def _traverse_graph(graph, rules, domains, classifiers=None):
                     break
             else:
                 if rules[node].satisfied_by(domains):
+                    rules[node].rename_domains(domains)
                     classifiers.append(node)
                     break
     else:
         for node, children in graph.items():
             if rules[node].satisfied_by(domains):
+                rules[node].rename_domains(domains)
                 classifiers.append(node)
                 classifiers = _traverse_graph(children, rules, domains, classifiers)
                 break
-
     return classifiers
 
 
@@ -186,6 +187,12 @@ class RuleGraph:
             graph=d["graph"]
         )
 
+    def to_dict(self):
+        return {
+            "rules": [rule.to_dict() for rule in self.rules],
+            "graph": self.graph
+        }
+
     def classify(self, domains):
         return _traverse_graph(self.graph, self.rules, domains)
 
@@ -200,11 +207,21 @@ class Rule:
         evaluator (str): Evaluatable rule satisfaction statement.
     """
 
-    def __init__(self, name=None, domains=None, filters=None, evaluator=None):
+    def __init__(self, name=None, rename=None, domains=None, filters=None, evaluator=None):
         self.name = name if name else ""
+        self.rename = rename if rename else {}
         self.domains = domains if domains else []
         self.filters = filters if filters else {}
         self.evaluator = evaluator if evaluator else ""
+
+    def to_dict(self):
+        return {
+            "name": self.name,
+            "rename": self.rename,
+            "domains": self.domains,
+            "filters": self.filters,
+            "evaluator": self.evaluator
+        }
 
     def evaluate(self, conditions):
         """Evaluates the rules evaluator string given evaluated conditions.
@@ -216,6 +233,17 @@ class Rule:
         for idx, condition in reversed(list(enumerate(conditions))):
             evaluator = evaluator.replace(str(idx), str(condition))
         return eval(evaluator)
+
+    def rename_domains(self, domains):
+        """Renames domain types if substitutions are specified in the rule.
+
+        If the rename dictionary is empty, no action is taken.
+        """
+        if not self.rename:
+            return
+        for domain in domains:
+            if domain.type in self.rename:
+                domain.type = self.rename[domain]
 
     def valid_family(self, domain):
         """Checks a given domain matches a specified CDD family in the rule.
@@ -241,7 +269,7 @@ class Rule:
         cannot be matched to another in the rule. This enables rules based on
         counts of domains (e.g. multi-modular PKS w/ 2 KS domains).
         """
-        LOG.debug("Evaluating", self.name, "against", [d.type for d in domains])
+        LOG.debug("Evaluating %s against %s", self.name, [d.type for d in domains])
         seen = []
         conditions = []
         for rule_domain in self.domains:
@@ -257,10 +285,16 @@ class Rule:
         return self.evaluate(conditions)
 
 
-def classify(synthases):
-    rg = RuleGraph()
+def classify(synthases, rule_path):
+    with open(rule_path) as fp:
+        d = json.load(fp)
+        rg = RuleGraph.from_dict(d)
+    etc = []
     for synthase in synthases:
-        rg.classify(synthase)
+        classification = rg.classify(synthase.domains)
+        setattr(synthase, "classification", classification)
+        etc.append(classification)
+    return etc
 
 
 

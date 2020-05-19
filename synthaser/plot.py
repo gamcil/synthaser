@@ -5,7 +5,8 @@ Plot domain architectures using matplotlib.
 
 import math
 
-from collections import namedtuple
+from itertools import groupby
+from collections import abc, namedtuple, defaultdict
 
 import numpy as np
 
@@ -119,71 +120,129 @@ def plot_gene_arrow(ax, synthase):
     )
 
 
-def subtype_iter(synthases):
-    """Iterate subtype groups in a collection of Synthase objects."""
-    _synthases = sorted(synthases, key=lambda s: s.subtype)
-    _group, _subtype = "", []
-    for synthase in _synthases:
-        if synthase.subtype != _subtype:
-            if _group:
-                yield _group
-            _group, _subtype = [synthase], synthase.subtype
+def group_synthases(synthases):
+    """Group synthases by their classifications."""
+    levels = defaultdict(list)
+    for synthase in synthases:
+        for level in synthase.classification:
+            levels[level].append(synthase)
+    return levels
+
+
+def build_dict(path, d=None):
+    """Recursively generates a dictionary of dictionaries from a list."""
+    if not d:
+        d = {}
+    if path:
+        key = path.pop(0)
+        d[key] = build_dict(path, d)
+    return d
+
+
+def merge_dicts(a, b):
+    """Recursively merges two dictionaries, allowing overlapping keys."""
+    merged = dict(a)
+    for key, value in b.items():
+        if key in merged:
+            merged[key] = merge_dicts(merged[key], value)
         else:
-            _group.append(synthase)
-    yield _group
+            merged[key] = value
+    return merged
 
 
-def assign_synthase_indices(groups):
-    """Assign hidden y indices to synthases.
+def get_classification_paths(synthases):
+    """Determines the hierarchy of synthase classifications.
 
-    The indices are staggered by synthase subtype group for visual separation in the
-    plot.
+    This hierarchy is used when annotating the plot with classification bars.
+    It should be used in conjunction with the per-classification synthase
+    dictionary generated using group_synthases().
     """
+    d = {}
+    for synthase in synthases:
+        d = merge_dicts(d, build_dict(synthase.classification))
+    return d
+
+
+def iter_nested_keys(d, depth=0):
+    """Iterates over all keys in a nested dictionary, reporting their depth.
+
+    The depth indicates how deeply nested the yielded key is in the dictionary.
+    It is used when annotating the plot to determine the position of the
+    classification bars.
+    """
+    for key, values in d.items():
+        yield key, depth
+        if values:
+            depth += 1
+            yield from iter_nested_keys(values, depth)
+
+
+def assign_synthase_indices(synthases):
+    """Assigns hidden y indices to synthases."""
     index = 0
-    for group in groups:
-        for synthase in group:
-            setattr(synthase, "_index", index)
-            index += 1
+    for synthase in synthases:
+        setattr(synthase, "_index", index)
         index += 1
 
 
-def generate_yticklabels(groups):
-    """Generate yticklabels from synthase groups.
-
-    The 'groupings' in the plot are made by separating each block with an empty row (y
-    value). Therefore, we assign the labels for each empty row as the subtype for the
-    subsequent synthase group to match the indices of plotted genes.
-    """
-    labels = []
-    for i, group in enumerate(groups):
-        if i > 0:
-            labels.append("")
-        labels.extend([synthase.header for synthase in group])
-    return labels
-
-
-def annotate_groups(ax, groups):
+def annotate_group(ax, classification, synthases, offset):
     """Add synthase type annotation to axes."""
-    for group in groups:
-        # Grab the first and last Synthase in the group
-        first, last = group[0], group[-1]
+    # Grab the first and last Synthase in the group
+    first, last = synthases[0], synthases[-1]
 
-        # Calculate coordinates for forming the bar
-        top_x, top_y = first.sequence_length + 60, first._index
-        out_x = top_x + 50
-        bot_y = last._index
+    new_offset = 100
+    return_new_offset = False
 
-        # MOVETO start coordinates, then LINETO for each subsequent point
-        points = [(top_x, top_y), (out_x, top_y), (out_x, bot_y), (top_x, bot_y)]
-        codes = [Path.MOVETO, Path.LINETO, Path.LINETO, Path.LINETO]
+    if offset == 0:
+        offset = max(s.sequence_length for s in synthases) + 60
+    else:
+        return_new_offset = True
 
-        # Form the Patch and add it to the axes
-        patch = PathPatch(Path(points, codes), facecolor="none", lw=1)
-        ax.add_patch(patch)
+    # Calculate coordinates for forming the bar
+    top_y = first._index
+    out_x = offset + 50
+    bot_y = last._index
 
-        # Now, add the text next to bar
-        mid_y = bot_y + (top_y - bot_y) / 2
-        ax.text(out_x + 50, mid_y, first.subtype)
+    # MOVETO start coordinates, then LINETO for each subsequent point
+    points = [(offset, top_y), (out_x, top_y), (out_x, bot_y), (offset, bot_y)]
+    codes = [Path.MOVETO, Path.LINETO, Path.LINETO, Path.LINETO]
+
+    # Form the Patch and add it to the axes
+    patch = PathPatch(Path(points, codes), facecolor="none", lw=1)
+    ax.add_patch(patch)
+
+    # Now, add the text next to bar
+    mid_y = bot_y + (top_y - bot_y) / 2
+    text = ax.text(out_x + 50, mid_y, classification)
+
+    textbb = (
+        text.get_window_extent(renderer=ax.figure.canvas.get_renderer())
+        .inverse_transformed(ax.transData))
+    text_width = textbb.width
+
+    return text_width + (return_new_offset and new_offset or offset + new_offset)
+
+
+def annotate_groups(ax, groups, hierarchy):
+    """Adds annotation bars to a synthaser plot."""
+    previous = 0
+    offsets = []
+    for classification, depth in iter_nested_keys(hierarchy):
+
+        if offsets and depth == previous:
+            offsets.pop()
+
+        offset = annotate_group(
+            ax,
+            classification,
+            groups[classification],
+            sum(offsets)
+        )
+
+        offsets.append(offset)
+
+        print(classification, offset, offsets, depth, previous)
+        previous = depth
 
 
 def generate_legend_elements(synthases):
@@ -193,15 +252,11 @@ def generate_legend_elements(synthases):
     `matplotlib.pyplot.Patch` instances with a comma-separated string of domain types as
     its label.
     """
-    elements = {}
+    elements = defaultdict(set)
     for synthase in synthases:
         for domain in synthase.domains:
             colour = COLOURS[domain.type]
-            if colour not in elements:
-                elements[colour] = {domain.type}
-            else:
-                elements[colour].add(domain.type)
-
+            elements[colour].add(domain.type)
     return [
         Patch(label=", ".join(domains), facecolor=colour)
         for colour, domains in elements.items()
@@ -212,25 +267,24 @@ def draw_figure(ax, synthases):
     """Generate a synthaser plot on a given matplotlib axes."""
 
     # Set the title
-    ax.set_title(
-        f"Domain architectures of {len(synthases)} synth(et)ases", fontsize="large"
-    )
+    title = f"Domain architectures of {len(synthases)} synth(et)ases"
+    ax.set_title(title, fontsize="large")
 
-    # Sort synthases, get subtype groups and domain types
-    synthases = sorted(synthases, key=lambda s: s.sequence_length, reverse=True)
-    groups = sorted(
-        subtype_iter(synthases), key=lambda g: g[0].sequence_length, reverse=True
-    )
+    # Sort synthases by length (reverse) and classification
+    synthases.sort(key=lambda s: (s.classification, -s.sequence_length))
+    groups = group_synthases(synthases)
+    hierarchy = get_classification_paths(synthases)
+
+    print("hierarchy", hierarchy)
 
     # Initialise the figure and adjust axes
-    total = len(synthases) + len(groups) - 2
-    label = generate_yticklabels(groups)
-    ytick = np.arange(total + 1)
+    total = len(synthases)
+    labels = [synthase.header for synthase in synthases]
+    yticks = np.arange(total)
 
-    # Adjust the yticks; all synthases are plotted as a unique index, with an empty
-    # index used as inter-group spaces
-    ax.set_yticks(ytick)
-    ax.set_yticklabels(label)
+    # Adjust yticks, yticklabels and limits
+    ax.set_yticks(yticks)
+    ax.set_yticklabels(labels)
     ax.set_ylim([total + 1, -1])
 
     # Round x limit up to nearest 500 for prettier scale
@@ -248,14 +302,14 @@ def draw_figure(ax, synthases):
     ax.spines["top"].set_visible(False)
 
     # Assign unique indices to each synthase
-    assign_synthase_indices(groups)
+    assign_synthase_indices(synthases)
 
     # Plot arrows
     for synthase in synthases:
         plot_gene_arrow(ax, synthase)
 
     # Annotate groups
-    annotate_groups(ax, groups)
+    annotate_groups(ax, groups, hierarchy)
 
 
 def draw_legend(ax, synthases):
@@ -317,7 +371,7 @@ def calculate_initial_figsize(synthases):
     groups = len(set(s.subtype for s in synthases))
     dtypes = len(set(COLOURS[d.type] for s in synthases for d in s.domains))
     lgrows = math.ceil(dtypes / 8)
-    return 7, (synths + groups - 1) * 0.2 + lgrows * 0.6 + 0.3
+    return 7, (synths + groups - 1) * 0.15 + lgrows * 0.6 + 0.3
 
 
 def plot(synthases, file=None, dpi=300):
