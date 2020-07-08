@@ -25,7 +25,7 @@ def get_data(container):
         "synthases": {s.header: s.to_dict() for s in container},
         "order": [s.header for s in container],
         "types": dict(grouping.group_synthases(container)),
-        "groups": list(grouping.iter_annotation_groups(hierarchy))
+        "groups": grouping.get_annotation_groups(hierarchy)
     }
 
 
