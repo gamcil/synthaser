@@ -2,8 +2,8 @@
 	"rules": [
 		{
 			"name": "Hybrid",
-			"domains": ["KS", "A"],
-			"evaluator": "0 and 1"
+			"domains": ["KS", "A", "C"],
+			"evaluator": "0 and (1 or 2)"
 		},
 		{
 			"name": "PKS",
@@ -17,13 +17,13 @@
 			"evaluator": "0 and 1"
 		},
 		{
-			"name": "Type I PKS",
+			"name": "Type I",
 			"domains": ["AT"],
 			"filters": {"AT": ["PKS_AT", "Acyl_transf_1"]},
 			"evaluator": "0"
 		},
 		{
-			"name": "HR-PKS",
+			"name": "Highly-reducing",
 			"domains": ["DH", "ER", "KR"],
 			"filters": {
 				"DH": ["PKS_DH", "PS-DH"],
@@ -33,7 +33,7 @@
 			"evaluator": "all([0, 1, 2])"
 		},
 		{
-			"name": "PR-PKS",
+			"name": "Partially-reducing",
 			"domains": ["DH", "ER", "KR"],
 			"filters": {
 				"DH": ["PKS_DH", "PS-DH"],
@@ -43,7 +43,7 @@
 			"evaluator": "any([0, 1, 2])"
 		},
 		{
-			"name": "NR-PKS",
+			"name": "Non-reducing",
 			"domains": ["SAT", "PT"],
 			"evaluator": "0"
 		},
@@ -55,11 +55,13 @@
 		},
 		{
 			"name": "NRPS",
+			"rename": {"ACP": "T"},
 			"domains": ["A", "T", "ACP", "C"],
 			"evaluator": "0 and (1 or 2) and 3"
 		},
 		{
 			"name": "NRPS-like",
+			"rename": {"ACP": "T"},
 			"domains": ["A", "C"],
 			"evaluator": "any([0, 1])"
 		},
@@ -117,7 +119,7 @@
 		{
 			"PKS": [
 				"Multi-modular PKS",
-				{"Type I PKS": ["HR-PKS", "PR-PKS", "NR-PKS"]},
+				{"Type I": ["Highly-reducing", "Partially-reducing", "Non-reducing"]},
 				"Type III PKS"
 			]
 		},
