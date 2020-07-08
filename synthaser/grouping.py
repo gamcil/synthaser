@@ -1,7 +1,3 @@
-"""
-Functions used for grouping Synthase objects by classifications.
-"""
-
 from collections import defaultdict
 
 
@@ -59,8 +55,7 @@ def iter_nested_keys(d, depth=0):
     for key, values in d.items():
         yield key, depth
         if values:
-            depth += 1
-            yield from iter_nested_keys(values, depth)
+            yield from iter_nested_keys(values, depth + 1)
 
 
 def iter_annotation_groups(hierarchy):
