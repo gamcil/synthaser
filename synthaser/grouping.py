@@ -71,3 +71,7 @@ def iter_annotation_groups(hierarchy):
             group = []
         group.insert(0, {"classification": classification, "depth": depth})
     yield group
+
+
+def get_annotation_groups(hierarchy):
+    return [group for group in iter_annotation_groups(hierarchy)]
