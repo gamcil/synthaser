@@ -1,7 +1,3 @@
-"""
-Plot domain architectures using matplotlib.
-"""
-
 import http.server
 import socketserver
 import webbrowser
@@ -72,6 +68,7 @@ class CustomHandler(http.server.BaseHTTPRequestHandler):
 
 
 def serve_html(data):
+    """Serve a synthaser plot using the socketserver module."""
     handler = partial(CustomHandler, data)
 
     # Instantiate a new server, bind to any open port
@@ -119,6 +116,7 @@ def save_html(data, output):
 
 
 def plot_synthases(container, output=None):
+    """Generates synthaser plot from a collection of Synthase objects."""
     data = get_data(container)
     if output:
         save_html(data, output)

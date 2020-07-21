@@ -18,35 +18,8 @@ SEARCH_HISTORY = []
 
 def history():
     """Print out summary of previously saved CD-Search runs.
-
-    The parameters and results of prior searches are stored in `SEARCH_HISTORY`, which
-    is simply a list of dictionaries:
-
-    >>> ncbi.SEARCH_HISTORY
-    [{'cdsid': 'QM3-qcdsearch-C7558163144A288-147D9ECB39A09F8B',
-    'parameters': {'db': 'cdd', 'smode': 'auto', 'useid1': 'true', 'compbasedadj': '1',
-    'filter': 'true', 'evalue': '3.0', 'maxhit': '500', 'dmode': 'full', 'tdata':
-    'hits'}, 'results': <Response [200]>}]
-
-    This function simply formats the entries in `SEARCH_HISTORY` nicely:
-
-    >>> ncbi.history()
-    1.      Run ID: QM3-qcdsearch-B4BAD4B59BC5B80-3E7CFCD3F93E21D0
-        Parameters:
-                    db: cdd
-                 smode: auto
-                useid1: true
-          compbasedadj: 1
-                filter: true
-                evalue: 3.0
-                maxhit: 500
-                 dmode: full
-                 tdata: hits
-
-    Raises
-    ------
-    ValueError
-        If `SEARCH_HISTORY` is empty (i.e. no searches have been run).
+    Raises:
+        ValueError: If SEARCH_HISTORY is empty (i.e. no searches have been run)
     """
     if not SEARCH_HISTORY:
         raise ValueError("No searches have been run")
@@ -69,7 +42,7 @@ def _container_from_query_file(handle):
 def _container_from_query_ids(ids):
     """Build SynthaseContainer from query ID file or collection.
 
-    First checks if `ids` is an iterable; if so, fetch sequences from NCBI and return a
+    First checks if ids is an iterable; if so, fetch sequences from NCBI and return a
     new SynthaseContainer. Otherwise, expects a file containing a collection of IDs
     each on a new line.
     """
@@ -89,17 +62,11 @@ def _container_from_query_ids(ids):
 def prepare_input(query_ids=None, query_file=None):
     """Generate a SynthaseContainer from either query IDs or a query file.
 
-    Returns
-    -------
-    models.SynthaseContainer
-        Collection of `models.Synthase` objects representing query sequences.
-
-    Raises
-    ------
-    ValueError
-        Neither `query_ids` nor `query_file` provided
-    ValueError
-        Too many sequences were provided (NCBI limits searches at 4000 sequences)
+    Returns:
+        SynthaseContainer: Synthase objects for query sequences
+    Raises:
+        ValueError: Neither query_ids nor query_file provided
+        ValueError: Too many sequences were provided (max. 4000 sequences)
     """
     if query_ids:
         container = _container_from_query_ids(query_ids)
@@ -107,10 +74,8 @@ def prepare_input(query_ids=None, query_file=None):
         container = _container_from_query_file(query_file)
     else:
         raise ValueError("Expected 'query_ids' or 'query_file'")
-
     if len(container) > 4000:
         raise ValueError("Too many sequences (NCBI limit = 4000)")
-
     return container
 
 
@@ -119,6 +84,7 @@ def search(
     query_ids=None,
     query_file=None,
     domain_file=None,
+    classify_file=None,
     results_file=None,
     cdsid=None,
     delay=20,
@@ -131,33 +97,19 @@ def search(
 
     CD-Search parameters can be given as kwargs which are passed on to _remote.
 
-    Parameters
-    ----------
-    mode: str
-        synthaser search mode ('local' or 'remote')
-    query_ids: str, file
-        Collection of NCBI sequence identifiers to analyse
-    query_file: file
-        Open FASTA file handle
-    domain_file: file
-        Custom domain rule JSON file to use when parsing results
-    results_file: file
-        Results file from a previous CDSearch/RPSBLAST search
-    cdsid: str
-        CDSearch ID from a previous search
-    delay: int
-        Time delay (s) between polling NCBI for results (def. 20)
-    max_retries: int
-        Maximum number of polling attempts before exiting (def. -1)
-    database: str
-        rpsblast database to use in local searches
-    cpu: int
-        Number of threads to use in rpsblast
-
-    Returns
-    -------
-    models.SynthaseContainer
-        Collection of models.Synthase objects representing query sequences
+    Parameters:
+        mode (str): synthaser search mode ('local' or 'remote')
+        query_ids (str, file): NCBI sequence identifiers to analyse
+        query_file (file): Open FASTA file handle
+        domain_file (file): Custom domain rule JSON file to use when parsing results
+        results_file (file): Results file from a previous CDSearch/RPSBLAST search
+        cdsid (str): CDSearch ID from a previous search
+        delay (int): Time delay (s) between polling NCBI for results (def. 20)
+        max_retries (int): Maximum number of polling attempts before exiting (def. -1)
+        database (str): rpsblast database to use in local searches
+        cpu (int): Number of threads to use in rpsblast
+    Returns:
+        SynthaseContainer: Synthase objects representing query sequences
     """
 
     query = prepare_input(query_ids, query_file)
@@ -195,8 +147,7 @@ def search(
             query.get(header).domains = domains
 
     LOG.info("Classifying synthases...")
-    for synthase in query:
-        classify(synthase)
+    classify(query, rule_file=classify_file)
 
     return query
 

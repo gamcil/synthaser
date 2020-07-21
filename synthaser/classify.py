@@ -1,17 +1,9 @@
 #!/usr/bin/env python3
 
-"""
-This module stores all of the routines for classification of Synthase objects into
-iosynthetic categories.
-
-"""
-
-import json
 import logging
 
 from synthaser import settings
-
-
+from synthaser.models import Serialiser
 
 LOG = logging.getLogger(__name__)
 
@@ -28,6 +20,8 @@ def traverse_graph(graph, rules, domains, classifiers=None):
         rules (dict): Rule objects to evaluate on domains.
         domains (list): Domain objects to classify.
         classifiers (list): Current classifiers for a Domain collection.
+    Returns:
+        classifiers
     """
     if not classifiers:
         classifiers = []
@@ -53,19 +47,22 @@ def traverse_graph(graph, rules, domains, classifiers=None):
     return classifiers
 
 
-class RuleGraph:
-    """Hierarchy of classification rules.
+class RuleGraph(Serialiser):
+    """A hierarchy of classification rules.
 
     The RuleGraph is used to classify synthases based on their domains.
     It stores Rule objects, as well as a directed graph controlling the
     order and hierarchy of classification.
 
-    An example synthaser rule graph looks like:
-    [
-        "Hybrid",
-        {"PKS": ["HR-PKS", "PR-PKS", "NR-PKS"]},
-        "NRPS"
-    ]
+    An example synthaser rule graph looks like this:
+
+    ::
+
+        [
+            "Hybrid",
+            {"PKS": ["HR-PKS", "PR-PKS", "NR-PKS"]},
+            "NRPS"
+        ]
 
     In this example, the "Hybrid" rule is evaluated first. If unsuccessful,
     the "PKS" rule is evaluated. If this is successful, synthaser recurses
@@ -99,10 +96,6 @@ class RuleGraph:
             "rules": [rule.to_dict() for rule in self.rules],
             "graph": self.graph
         }
-
-    @classmethod
-    def from_json(cls, js):
-        return cls.from_dict(json.load(js))
 
     def classify(self, domains):
         return traverse_graph(self.graph, self.rules, domains)
@@ -139,6 +132,11 @@ class Rule:
 
         Iterates backwards to avoid bad substitutions in larger (>=10) indices.
         e.g. "0 and 1 and ... and 13" --> "False and True and ... and True3"
+
+        Arguments:
+            conditions (list): Boolean values corresponding to domains in this rule.
+        Returns:
+            True if rule is satisfied, otherwise False.
         """
         evaluator = self.evaluator
         for idx, condition in reversed(list(enumerate(conditions))):
@@ -161,6 +159,16 @@ class Rule:
 
         If no families have been specified for the given domain type, this
         function will return True (i.e. any family of the type is accepted).
+
+        This behaviour is controlled by the filters property of a synthaser rule.
+        For example, to restrict a KS domain to certain CDD families:
+
+        ::
+
+            "filters": {
+                "KS": ["PKS_KS", "PKS", "CHS_like"],
+                ...
+            }
         """
         if domain.type in self.filters:
             return domain.domain in self.filters[domain.type]
@@ -201,6 +209,10 @@ def classify(synthases, rule_file=None):
 
     If no rule_file is provided, the packaged rules.json will be loaded by
     default.
+
+    Arguments:
+        synthases (list): Synthase objects to classify.
+        rule_file (str): Path to custom classification rule file.
     """
     rule_file = rule_file or settings.RULE_FILE
     with open(rule_file) as fp:
