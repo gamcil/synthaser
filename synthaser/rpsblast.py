@@ -1,40 +1,3 @@
-"""
-Wrap RPS-BLAST to enable local searches.
-
-Cdd_LE.tar.gz = pre-formatted database containing all domains found in the CDD.
-
-This module requires the following 2 programs:
-
-1) rpsblast
-    RPSBLAST is a distributed in the NCBI BLAST+ toolkit. This can be acquired
-    either directly from NCBI's FTP:
-    ftp://ftp.ncbi.nlm.nih.gov/blast/executables/blast+/LATEST/
-
-    Or from your distributions repositories, e.g. for Ubuntu:
-    $ sudo apt install ncbi-blast+
-
-2) rpsbproc
-    This is a post-processing tool offered by the NCBI that can convert rpsblast
-    results into output identical to that of an online batch CD-Search run.
-
-    This can be installed as follows:
-    a) Acquire the relevant archive for your system from the CDD FTP:
-        ftp://ftp.ncbi.nih.gov/pub/mmdb/cdd/rpsbproc/
-    b) Extract the contents
-    c) Acquire the data files required by rpsbproc either by running
-        utils/getcdddata.sh, or directly from the FTP as detailed by the README
-        (see: domain-annotation files). The program does NOT require you to
-        download all of the domain databases. So, if doing the former, you can
-        cancel the run after the necessary files are in data/, then delete db/
-        and the database .tar.gz files.
-    d) Symlink the rpsbproc binary file to somewhere on your system $PATH.
-        This is a requirement of synthaser, as it will throw an error if it
-        cannot find rpsbproc directly on the $PATH (i.e. accessable in terminal
-        just by typing 'rpsbproc'). For example:
-        $ ln -ls /path/to/RpsbProc-x64-linux/rpsbproc /usr/local/bin/rpsbproc
-"""
-
-
 import logging
 import shutil
 import subprocess
@@ -58,24 +21,15 @@ def get_program_path(program):
 def download_database(directory, flavour="Cdd"):
     """Download a pre-formatted CDD file from NCBI.
 
-    Database types:
-        Cdd:
-            All possible domain families
-        Cdd_NCBI:
-            NCBI-curated families
-        Cog:
-            Automatically aligned sequences/fragments classified in the COG resource
-            (mostly prokaryotes)
-        Kog:
-            Like Cog, except eukaryote focus
-        Pfam:
-            Families from the Pfam-A seed alignment database
-        Prk:
-            Automatically aligned sequences/fragments from the NCBI's Protein Clusters database
-        Smart:
-            Families from the Smart domain alignment database
-        Tigr:
-            Families from the TIGRFAM database
+    Cdd: All possible domain families
+    Cdd_NCBI: NCBI-curated families
+    Cog: Automatically aligned sequences/fragments classified in the COG resource
+        (mostly prokaryotes)
+    Kog: Like Cog, except eukaryote focus
+    Pfam: Families from the Pfam-A seed alignment database
+    Prk: Automatically aligned sequences/fragments from the NCBI's Protein Clusters database
+    Smart: Families from the Smart domain alignment database
+    Tigr: Families from the TIGRFAM database
     """
     if not Path(directory).is_dir():
         raise TypeError("Invalid directory")
@@ -114,7 +68,17 @@ def download_database(directory, flavour="Cdd"):
 
 
 def get_file_facts(database, ftp):
-    """Get size and last modified date of a file in FTP directory."""
+    """Get size and last modified date of a file in FTP directory.
+
+    Parameters:
+        database (str): Name of CDD database to check
+        ftp (str): FTP connection
+    Returns:
+        size (int): Size of file
+        date (str): Last modified date of file
+    Raises:
+        ValueError: If database is not found in the FTP directory
+    """
     for entry, facts in ftp.mlsd(facts=["modify", "size"]):
         if entry == database:
             size = int(facts["size"])
@@ -131,39 +95,28 @@ def untar(filename, dest=None):
     If dest is not specified, will default to using the name of the file without file
     extensions.
 
-    Returns
-    -------
-    dest: pathlib.Path
-        Folder where the contents of the tar file were extracted
-
-    Raises
-    ------
-    FileNotFoundError
-        If file specified by filename does not exist
+    Returns:
+        dest (pathlib.Path): Folder where the contents of the tar file were extracted
+    Raises:
+        FileNotFoundError: If file specified by filename does not exist
     """
     filename = Path(filename)
-
     if not filename.exists():
         raise FileNotFoundError("Given file does not exist")
-
     if not dest:
         dest = filename.with_suffix("").with_suffix("")
     else:
         dest = Path(dest)
-
     if not dest.is_dir():
         dest.mkdir()
-
     with tarfile.open(filename, "r") as tar:
         tar.extractall(dest)
-
     return dest
 
 
 def getdb(database, folder):
     """Convenience function to download a collection of databases to a given folder."""
     db_path = download_database(folder, flavour=database)
-
     LOG.info("Extracting contents to: %s", db_path.with_suffix("").with_suffix(""))
     untar(db_path)
 
@@ -171,7 +124,6 @@ def getdb(database, folder):
 def rpsblast(query, database, cpu=2):
     """Run rpsblast on a query file against a database."""
     path = get_program_path("rpsblast")
-
     params = {
         "-db": database,
         "-comp_based_stats": "1",
@@ -180,18 +132,14 @@ def rpsblast(query, database, cpu=2):
         "-num_threads": str(cpu),
         "-outfmt": "11",
     }
-
     if isinstance(query, str) and Path(query).exists():
         params["-query"] = query
-
     params = [value for pair in params.items() for value in pair]
-
     process = subprocess.run(
         [path, *params],
         input=query if "-query" not in params else None,
         stdout=subprocess.PIPE,
     )
-
     return process
 
 
@@ -205,22 +153,18 @@ def rpsbproc(results):
     it requires and throw an error.
 
     The CompletedProcess returned by this function contains a standard CD-Search results
-    file, able to be parsed directly by the `results` module.
+    file, able to be parsed directly by the results module.
     """
     path = get_program_path("rpsbproc")
-
     command = [str(path), "-m", "full", "--quiet", "-t", "doms", "-f"]
-
     if isinstance(results, str) and Path(results).exists():
         command.extend(["-i", results])
-
     process = subprocess.run(
         command,
         input=results if "-i" not in command else None,
         stdout=subprocess.PIPE,
         stderr=subprocess.DEVNULL,
     )
-
     return process
 
 

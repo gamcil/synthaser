@@ -19,7 +19,7 @@ sys.path.insert(0, os.path.abspath(".."))
 # -- Project information -----------------------------------------------------
 
 project = "synthaser"
-copyright = "2019, Cameron Gilchrist"
+copyright = "2020, Cameron Gilchrist"
 author = "Cameron Gilchrist"
 
 # The full version, including alpha/beta/rc tags

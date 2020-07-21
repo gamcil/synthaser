@@ -74,6 +74,11 @@
         "bitscore": 342.53,
         "type": "AT"
     },
+    "COG4981": {
+				"length": 717,
+				"bitscore": 241.833,
+				"type": "ER"
+    },
     "PKS_ER": {
         "length": 287,
         "bitscore": 250.768,

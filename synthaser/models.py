@@ -1,117 +1,57 @@
-"""
-This module stores the classes used throughout `synthaser`.
-
-The `Domain` class represents a conserved domain hit. It stores the broader domain type,
-the specific conserved domain profile name (from CDD), as well as its position in its
-parent synthase sequence and score from the search. It also provides methods for slicing
-the corresponding sequence and serialisation. We can instantiate a `Domain` object like
-so:
-
->>> from synthaser.models import Domain
->>> domain = Domain(
-...     type='KS',
-...     domain='PKS_KS',
-...     start=756,
-...     end=1178,
-...     evalue=0.0,
-...     bitscore=300
-... )
-
-and get its sequence given the parent `Synthase` object sequence:
-
->>> domain.slice(synthase.sequence)
-'MPIAVGM..'
-
-Likewise, the `Synthase` class stores information about a synthase, including its name,
-amino acid sequence, `Domain` instances and its biosynthetic type and subtype. It also
-contains methods for generating the domain architecture, extraction of domain sequences
-and more. For example, we can instantiate a new `Synthase` object like so:
-
->>> from synthaser.models import Synthase
->>> synthase = Synthase(
-...     header='SEQ001.1',
-...     sequence='MASGTC...',
-...     domains=[
-...         Domain(type='KS'),
-...         Domain(type='AT'),
-...         Domain(type='DH'),
-...         Domain(type='ER'),
-...         Domain(type='KR'),
-...         Domain(type='ACP'),
-...     ],
-...     type='Type I PKS',
-...     subtype='HR-PKS'
-... )
-
-Then, we can generate the domain architecture:
-
->>> synthase.architecture
-'KS-AT-DH-ER-KR-ACP'
-
-Or extract all of the domain sequences:
-
->>> synthase.extract_domains()
-{
-    "KS_0": "MPIAVGM...",
-    "AT_0": "VFTGQGA...",
-    "DH_0": "DLLGVPV...",
-    "ER_0": "DVEIQVS...",
-    "KR_0": "IAENMCS...",
-    "ACP_0": "ASTTVAQ..."
-}
-
-The object can also be serialised to JSON (note the `Domain` object works the same way):
-
->>> js = synthase.to_json()
->>> with open('synthase.json', 'w') as handle:
-...     handle.write(js)
-
-and subsequently loaded from JSON:
-
->>> with open('synthase.json') as handle:
-...     synthase = Synthase.from_json(handle)
-
-This will internally convert the `Synthase` object, as well as any `Domain` objects it
-contains, to dictionaries, before converting to JSON using the builtin json library
-and writing to file. When loading up from JSON, this process is reversed, and the
-entries in the file are converted back to Python objects.
-"""
-
-from collections import defaultdict, UserList
-from itertools import groupby
 import json
 import logging
+
+from collections import defaultdict, UserList
 
 
 LOG = logging.getLogger(__name__)
 
 
-class Synthase:
+class Serialiser:
+    def to_dict(self):
+        raise NotImplementedError
+
+    @classmethod
+    def from_dict(cls, d):
+        raise NotImplementedError
+
+    def to_json(self, fp=None, **kwargs):
+        if fp:
+            json.dump(self.to_dict(), fp, **kwargs)
+        else:
+            return json.dumps(self.to_dict(), **kwargs)
+
+    @classmethod
+    def from_json(cls, js, **kwargs):
+        if isinstance(js, str):
+            d = json.loads(js, **kwargs)
+        else:
+            d = json.load(js, **kwargs)
+        return cls.from_dict(d)
+
+
+class Synthase(Serialiser):
     """The Synthase class stores a query protein sequence, its hit domains, and the
     methods for filtering and classifying.
 
-    Parameters
-    ----------
-    header : str
-        Name of this Synthase. This must be equal to what is used in NCBI CD-search.
-    sequence : str
-        Amino acid sequence of this Synthase.
-    domains : list
-        Conserved domain hits in this Synthase.
-    type : str
-        Type of synthase; 'PKS', 'NRPS' or 'Hybrid'
-    subtype : str
-        Subtype of synthase, e.g. HR-PKS.
+    Attributes:
+        header (str): Synthase name.
+        sequence (str): Amino acid sequence of this Synthase.
+        domains (list): Conserved domain hits in this Synthase.
+        classification (list): All classification rules satisfied.
     """
 
     def __init__(
-        self, header=None, sequence=None, domains=None, type=None, subtype=None
+        self,
+        header=None,
+        sequence=None,
+        domains=None,
+        classification=None
     ):
         self.header = header
         self.sequence = sequence
         self.domains = domains if domains else []
-        self.type = type if type else ""
-        self.subtype = subtype if subtype else ""
+        self.classification = classification if classification else []
 
     def __str__(self):
         return f"{self.header}\t{self.architecture}"
@@ -122,7 +62,7 @@ class Synthase:
         raise NotImplementedError
 
     def extract_domains(self):
-        """Extract all domains in this synthase.
+        """Extracts all domain sequences from this synthase.
 
         For example, given a Synthase:
 
@@ -140,17 +80,11 @@ class Synthase:
         >>> synthase.extract_domains()
         {'KS':['ACGT...'], 'AT':['ACGT...']}
 
-        Returns
-        -------
-        dict
-            Sliced sequences for each domain in this synthase, keyed on domain type.
-
-        Raises
-        ------
-        ValueError
-            If the `Synthase` has no `Domain` objects.
-        ValueError
-            If the `sequence` attribute is empty.
+        Returns:
+            dict: Sequences for each domain in this synthase keyed on domain type.
+        Raises:
+            ValueError: If the Synthase has no Domain objects.
+            ValueError: If the sequence attribute is empty.
         """
         if not self.domains:
             raise ValueError("Synthase has no domains")
@@ -169,8 +103,7 @@ class Synthase:
             "header": self.header,
             "sequence": self.sequence,
             "domains": [domain.to_dict() for domain in self.domains],
-            "type": self.type,
-            "subtype": self.subtype,
+            "classification": self.classification,
         }
 
     @classmethod
@@ -187,18 +120,10 @@ class Synthase:
         fields = [
             self.header,
             str(self.sequence_length),
-            self.type,
-            self.subtype,
             self.architecture,
+            ", ".join(self.classification)
         ]
         return delimiter.join(fields)
-
-    def to_json(self):
-        return json.dumps(self.to_dict())
-
-    @classmethod
-    def from_json(cls, json_file):
-        return Synthase.from_dict(json.load(json_file))
 
     @property
     def sequence_length(self):
@@ -206,7 +131,6 @@ class Synthase:
 
     @property
     def architecture(self):
-        """Return the domain architecture of this synthase as a hyphen separated string."""
         return "-".join(str(domain) for domain in self.domains)
 
     @property
@@ -214,8 +138,20 @@ class Synthase:
         return [domain.type for domain in self.domains]
 
 
-class Domain:
-    """Store a conserved domain hit."""
+class Domain(Serialiser):
+    """A conserved domain hit.
+
+    Attributes:
+        type (str): Broader domain type (e.g. KS)
+        domain (str): Specific CDD family (e.g. PKS_KS)
+        start (int): Start of domain hit in parent sequence
+        end (int): End of domain hit in parent sequence
+        evalue (float): Domain hit E-value
+        bitscore (float): Domain hit bitscore
+        partial (str): Domain hit partiality ('C', 'N' or 'NC')
+        accession (str): CDD accession of domain family
+        superfamily (str): CDD accession of domain superfamily
+    """
 
     def __init__(
         self,
@@ -226,6 +162,8 @@ class Domain:
         evalue=None,
         bitscore=None,
         partial=False,
+        accession=None,
+        superfamily=None,
     ):
         self.type = type
         self.domain = domain
@@ -234,12 +172,16 @@ class Domain:
         self.evalue = evalue
         self.bitscore = bitscore
         self.partial = partial
+        self.accession = accession
+        self.superfamily = superfamily
 
     def __str__(self):
         if self.partial in ("C", "N", "NC"):
             return f"({self.type})"
         return self.type
 
+    # TODO: rework, or move this to e.g. domain1.equals(domain2)
+    #       since this messes with object comparison e.g. domain1 in [...]
     def __eq__(self, other):
         if isinstance(other, type(self)):
             return (
@@ -254,7 +196,7 @@ class Domain:
         return self.end - self.start
 
     def slice(self, sequence):
-        """Slice segment of sequence using the position of this Domain.
+        """Slices segment of sequence using the position of this Domain.
 
         Given a Domain:
 
@@ -273,17 +215,6 @@ class Domain:
         return sequence[self.start - 1 : self.end]
 
     def to_dict(self):
-        """Serialise this object to dict of its attributes.
-
-        For example, if we define a Domain:
-
-        >>> domain = Domain(type='KS', domain='PksD', start=9, end=1143)
-
-        We can serialise it to a Python dictionary:
-
-        >>> domain.to_dict()
-        {"type": "KS", "domain": "PksD", "start": 9, "end": 1143}
-        """
         return {
             "type": self.type,
             "domain": self.domain,
@@ -292,18 +223,9 @@ class Domain:
             "evalue": self.evalue,
             "bitscore": self.bitscore,
             "partial": self.partial,
+            "accession": self.accession,
+            "superfamily": self.superfamily,
         }
-
-    def to_json(self):
-        """Serialise this object to JSON.
-
-        This function calls json.dumps() on Domain.to_dict().
-        """
-        return json.dumps(self.to_dict())
-
-    @classmethod
-    def from_json(cls, json_file):
-        return cls(**json.load(json_file))
 
 
 class SynthaseContainer(UserList):
@@ -326,30 +248,37 @@ class SynthaseContainer(UserList):
         return copy
 
     def __str__(self):
-        return "\n\n".join(
-            "{}\n{}\n{}".format(
-                subtype,
-                "-" * len(subtype),
-                "\n".join(str(synthase) for synthase in group),
-            )
-            for subtype, group in self.subtypes()
-        )
+        previous = []
+        lines = []
+        for synthase in sorted(
+            self, key=lambda s: (s.classification, -s.sequence_length)
+        ):
+            if previous != synthase.classification:
+                previous = synthase.classification
+                if lines:
+                    lines[-1] += "\n"
+                line = " --> ".join(previous)
+                under = "-" * len(line)
+                lines.extend([line, under])
+            lines.append(str(synthase))
+        return "\n".join(lines)
 
     def to_long(self, delimiter=",", headers=True):
         """Generate summary of the container in long data format.
 
-        e.g.
-            Synthase    Length (aa)  Type         Subtype    Architecture
-            SEQ001.1    1000         Type I PKS   HR-PKS     KS-AT-DH-ER-KR-ACP
+        For example:
+
+        ::
+
+            Synthase  Length (aa)  Architecture        Classification
+            SEQ001.1  1000         KS-AT-DH-ER-KR-ACP  PKS, Type I, Highly-reducing
 
         NOTE: actual output is character delimited, not human readable.
         """
         synthases = [synthase.to_long(delimiter) for synthase in self]
-
         if headers:
-            _headers = ("Synthase", "Length (aa)", "Type", "Subtype", "Architecture")
+            _headers = ("Synthase", "Length (aa)", "Architecture", "Classification")
             synthases.insert(0, delimiter.join(_headers))
-
         return "\n".join(synthases)
 
     def append(self, synthase):
@@ -377,40 +306,6 @@ class SynthaseContainer(UserList):
         """Load Synthase objects from JSON."""
         return cls(Synthase.from_dict(entry) for entry in json.load(handle))
 
-    def _attr_iter(self, attr):
-        """Iterate over Synthase objects inside the SynthaseContainer, grouped by some
-        attribute.
-        """
-        if attr not in ("type", "subtype"):
-            raise ValueError("Expected 'type' or 'subtype'")
-        synthases = sorted(self.data, key=lambda s: getattr(s, attr))
-        for key, group in groupby(synthases, key=lambda s: getattr(s, attr)):
-            yield key, type(self)(group)
-
-    def subtypes(self):
-        """Iterate over Synthase subtypes.
-
-        Yields
-        ------
-        subtype : str
-            Subtype of Synthase objects in the group
-        synthases : SynthaseContainer
-            SynthaseContainer object containing Synthase objects
-        """
-        yield from self._attr_iter("subtype")
-
-    def types(self):
-        """Iterate over Synthase types.
-
-        Yields
-        ------
-        type : str
-            Type of Synthase objects in the group
-        synthases : SynthaseContainer
-            SynthaseContainer object containing Synthase objects
-        """
-        yield from self._attr_iter("type")
-
     def extract_domains(self):
         """Extract domain sequences from Synthase objects in this container.
 
@@ -426,14 +321,13 @@ class SynthaseContainer(UserList):
         """
         combined = defaultdict(list)
         for synthase in self:
-            try:
-                for type, sequences in synthase.extract_domains().items():
-                    combined[type].extend(
-                        (f"{synthase.header}_{type}_{i}", sequence)
-                        for i, sequence in enumerate(sequences)
-                    )
-            except ValueError:
+            if not synthase.domains:
                 LOG.warning("%s has no domains", synthase.header)
+            for type, sequences in synthase.extract_domains().items():
+                combined[type].extend(
+                    (f"{synthase.header}_{type}_{i}", sequence)
+                    for i, sequence in enumerate(sequences)
+                )
         return dict(combined)
 
     def add_sequences(self, sequences):
