@@ -152,7 +152,7 @@ class Rule:
             return
         for domain in domains:
             if domain.type in self.rename:
-                domain.type = self.rename[domain]
+                domain.type = self.rename[domain.type]
 
     def valid_family(self, domain):
         """Checks a given domain matches a specified CDD family in the rule.
