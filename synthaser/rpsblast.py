@@ -18,6 +18,25 @@ def get_program_path(program):
     return Path(path).resolve()
 
 
+def download(ftp, retr, out_path):
+    with out_path.open("wb") as out:
+        size, date = get_file_facts(retr, ftp)
+
+        def callback(chunk):
+            out.write(chunk)
+            progress = out.tell() / size
+            print(f"Progress: {progress:.2%}", end="\r", flush=True)
+
+        LOG.info("Attempting to download %s", retr)
+        LOG.info("Size: %.2f gb", size / 1024 ** 3)
+        LOG.info("Date: %s", date)
+
+        ftp.retrbinary(f"RETR {retr}", callback)
+
+    if size != out_path.stat().st_size:
+        LOG.warning("Size mismatch between FTP and downloaded copy")
+
+
 def download_database(directory, flavour="Cdd"):
     """Download a pre-formatted CDD file from NCBI.
 
@@ -44,25 +63,10 @@ def download_database(directory, flavour="Cdd"):
 
     LOG.info("Connecting to NCBI FTP server")
 
-    with FTP("ftp.ncbi.nih.gov") as ftp, db_path.open("wb") as db:
+    with FTP("ftp.ncbi.nih.gov") as ftp:
         ftp.login()
         ftp.cwd("pub/mmdb/cdd/little_endian/")
-
-        size, date = get_file_facts(db_name, ftp)
-
-        def callback(chunk):
-            db.write(chunk)
-            progress = db.tell() / size
-            print(f"Progress: {progress:.2%}", end="\r", flush=True)
-
-        LOG.info("Attempting to download %s", db_name)
-        LOG.info("Size: %.2f gb", size / 1024 ** 3)
-        LOG.info("Date: %s", date)
-
-        ftp.retrbinary(f"RETR {db_name}", callback)
-
-    if size != db_path.stat().st_size:
-        LOG.warning("Size mismatch between FTP and downloaded copy")
+        download(ftp, db_name, db_path)
 
     return db_path
 
@@ -86,7 +90,7 @@ def get_file_facts(database, ftp):
                 "%d %b %Y %H:%M:%S"
             )
             return size, date
-    raise ValueError("Specified database not found in FTP directory")
+    raise ValueError("Specified file not found in FTP directory")
 
 
 def untar(filename, dest=None):
