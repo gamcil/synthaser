@@ -155,6 +155,7 @@ class Domain(Serialiser):
 
     def __init__(
         self,
+        pssm=None,
         type=None,
         domain=None,
         start=None,
@@ -165,6 +166,7 @@ class Domain(Serialiser):
         accession=None,
         superfamily=None,
     ):
+        self.pssm = pssm
         self.type = type
         self.domain = domain
         self.start = start
@@ -216,6 +218,7 @@ class Domain(Serialiser):
 
     def to_dict(self):
         return {
+            "pssm": self.pssm,
             "type": self.type,
             "domain": self.domain,
             "start": self.start,
