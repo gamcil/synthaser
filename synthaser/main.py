@@ -12,6 +12,7 @@ from synthaser import (
     rpsblast,
     models,
     parsers,
+    domains,
 )
 from synthaser.plot import plot_synthases
 
@@ -96,14 +97,14 @@ def synthaser(
 def main():
     args = parsers.parse_args(sys.argv[1:])
 
-    if args.subcommand == "getdb":
+    if args.command == "getdb":
         rpsblast.getdb(args.database, args.folder)
 
-    elif args.subcommand == "getseq":
+    elif args.command == "getseq":
         container = search.prepare_input(query_ids=args.sequence_ids)
         print(container.to_fasta(), file=args.output)
 
-    elif args.subcommand == "search":
+    elif args.command == "search":
         synthaser(
             query_file=args.query_file,
             query_ids=args.query_ids,
@@ -125,6 +126,24 @@ def main():
             classify_file=args.classify_file,
             results_file=args.results_file,
         )
+
+    elif args.command == "domains":
+        if args.subcommand == "convert":
+            domains.convert(args.domain_file, names=args.names, accessions=args.accessions)
+        elif args.subcommand == "update":
+            domains.update(
+                args.rule_file,
+                args.domain_file,
+                type=args.type,
+                families=args.families,
+                file=args.file,
+            )
+        elif args.subcommand == "remove":
+            domains.remove(args.rule_file, args.rules, args.families)
+        elif args.subcommand == "download":
+            domains.download(args.domain_file, folder=args.folder, indent=args.indent)
+        elif args.subcommand == "summary":
+            domains.summary(args.rule_file, args.rules, args.families)
 
 
 if __name__ == "__main__":
