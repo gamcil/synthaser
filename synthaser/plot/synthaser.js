@@ -114,14 +114,12 @@ function getTooltipHTML(d, data) {
 	/* Generates the HTML content for a cell hovering tooltip.
 	 * It provides the name of the query, as well as a table of each hit.
 	 */
-	let sequence = data.synthases[d.parent].sequence.slice(d.start, d.end)
+	let pSequence = data.synthases[d.parent].sequence
+	let dSequence = pSequence.slice(d.start, d.end)
 	let cddUrl = "https://www.ncbi.nlm.nih.gov/Structure/cdd/cddsrv.cgi?uid="
 	return `
 	<p class="tooltip-summary">
-		<span><b>${d.parent}</b></span>
-		<br>
-		<span>${d.pLength}aa</span>
-		<br>
+		<span><b>${d.parent}: ${d.type}</b></span>
 	</p>
 	<table class="tooltip-hits">
 	<tbody>
@@ -151,8 +149,14 @@ function getTooltipHTML(d, data) {
 		</tr>
 		<tr>
 		<td colspan=2>
-			<button onClick="copyToClipboard('${sequence}')">
-				Copy sequence
+			<b>Copy sequence:</b>
+			<br>
+			<button style="margin-bottom: 2px" onClick="copyToClipboard('${dSequence}')">
+				Domain (${dSequence.length}aa)
+			</button>
+			<br>
+			<button onClick="copyToClipboard('${pSequence}')">
+				Protein (${pSequence.length}aa)
 			</button>
 		</td>
 		</tr>
