@@ -59,6 +59,7 @@ def domain_from_row(row):
     """
     (
         *_,
+        pssm,
         start,
         end,
         evalue,
@@ -73,6 +74,7 @@ def domain_from_row(row):
         raise ValueError(f"'{domain}' not a synthaser key domain")
 
     return Domain(
+        pssm=pssm,
         type=DOMAINS[domain]["type"],
         domain=domain,
         start=int(start),
