@@ -28,6 +28,12 @@
 	"rules": [
 		{
 			"name": "Hybrid",
+			"rename": {
+				"ACP": {
+					"after": ["A", "C"],
+					"to": "T"
+				}
+			},
 			"domains": ["KS", "A", "C"],
 			"evaluator": "0 and (1 or 2)"
 		},
