@@ -32,7 +32,7 @@ setup(
         "License :: OSI Approved :: MIT License",
         "Operating System :: OS Independent",
     ],
-    install_requires=["requests"],
+    install_requires=["requests", "genome2json"],
     python_requires=">=3.6",
     tests_require=["pytest", "pytest-cov", "pytest-mock", "requests-mock"],
     entry_points={"console_scripts": ["synthaser=synthaser.main:main"]},
