@@ -61,7 +61,35 @@ class Synthase(Serialiser):
             return self.header == other.header
         raise NotImplementedError
 
-    def extract_domains(self):
+    def extract_domains(self, types=None, families=None):
+        """Extract specific domain type/family sequences from this Synthase.
+        """
+        if not self.domains:
+            raise ValueError("Synthase has no domains")
+        if not self.sequence:
+            raise ValueError("Synthase has no sequence")
+
+        # If nothing specified, extract all
+        if not (types or families):
+            return self.extract_all_domains()
+
+        output = defaultdict(lambda: defaultdict(list))
+
+        for domain in self.domains:
+            # Slice from parent sequence
+            sequence = domain.slice(self.sequence)
+
+            # Domain types
+            if types and domain.type in types:
+                output["types"][domain.type].append(sequence)
+
+            # Specific domain families
+            if families and domain.domain in families:
+                output["families"][domain.domain].append(sequence)
+
+        return output
+
+    def extract_all_domains(self):
         """Extracts all domain sequences from this synthase.
 
         For example, given a Synthase:
@@ -77,7 +105,7 @@ class Synthase(Serialiser):
 
         Then, we can call this function to extract the domain sequences:
 
-        >>> synthase.extract_domains()
+        >>> synthase.extract_all_domains()
         {'KS':['ACGT...'], 'AT':['ACGT...']}
 
         Returns:
