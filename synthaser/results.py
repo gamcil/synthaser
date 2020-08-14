@@ -1,10 +1,3 @@
-#!/usr/bin/env python3
-
-"""
-
-"""
-
-
 import logging
 import json
 import re
@@ -70,12 +63,12 @@ def domain_from_row(row):
         superfamily,
     ) = row.split("\t")
 
-    if domain not in DOMAINS:
+    if accession not in DOMAINS:
         raise ValueError(f"'{domain}' not a synthaser key domain")
 
     return Domain(
         pssm=pssm,
-        type=DOMAINS[domain]["type"],
+        type=DOMAINS[accession]["type"],
         domain=domain,
         start=int(start),
         end=int(end),
@@ -196,7 +189,7 @@ def is_fragmented_domain(one, two, coverage_pct=0.5, tolerance_pct=0.1):
     if one.type != two.type:
         raise ValueError("Expected Domain instances of same type")
 
-    pssm_length = DOMAINS[one.domain]["length"]
+    pssm_length = DOMAINS[one.accession]["length"]
     coverage = pssm_length * coverage_pct
     tolerance = pssm_length * tolerance_pct
     one_length, two_length = len(one), len(two)
@@ -273,7 +266,7 @@ def choose_representative_domain(group, by="evalue"):
             (e.g. Condensation -> Epimerization).
     """
     key_functions = {
-        "bitscore": (lambda d: d.bitscore / DOMAINS[d.domain]["bitscore"], True),
+        "bitscore": (lambda d: d.bitscore / DOMAINS[d.accession]["bitscore"], True),
         "evalue": (lambda d: d.evalue, False),
         "length": (lambda d: d.end - d.start, True),
     }
