@@ -146,13 +146,29 @@ class Rule:
     def rename_domains(self, domains):
         """Renames domain types if substitutions are specified in the rule.
 
-        If the rename dictionary is empty, no action is taken.
+        The rename dictionary maps domain types to other domain types.
+        For example, an ACP domain in a PKS matches the same PP-binding domain as
+        a T domain in an NRPS, so to follow the naming convention the NRPS rule
+        renames ACPs to Ts.
+
+        Additionally, rename rules can be nested dicts to allow extra rules. For
+        example, in a PKS-NRPS, the PP-binding domain in the NRPS module should
+        be named T, not ACP. So, its rule is {'after': ['A', 'C'], 'to': 'T'};
+        any ACP domains after the first A or C will be renamed T.
         """
         if not self.rename:
             return
-        for domain in domains:
-            if domain.type in self.rename:
-                domain.type = self.rename[domain.type]
+        for key, value in self.rename.items():
+            if isinstance(value, dict):
+                flag = False
+                for domain in domains:
+                    if not flag and domain.type in value["after"]:
+                        flag = True
+                    if flag and domain.type == key:
+                        domain.type = value["to"]
+            else:
+                if domain.type == key:
+                    domain.type = value
 
     def valid_family(self, domain):
         """Checks a given domain matches a specified CDD family in the rule.
