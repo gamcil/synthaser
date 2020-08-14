@@ -58,24 +58,27 @@ def synthaser(
             synthases = models.SynthaseContainer.from_json(fp)
         _json_loaded = True
     else:
-        synthases = search.search(
-            mode=mode,
-            query_file=query_file,
-            query_ids=query_ids,
-            cdsid=cdsid,
-            domain_file=domain_file,
-            classify_file=classify_file,
-            results_file=results_file,
-            database=database,
-            smode=smode,
-            useid1=useid1,
-            compbasedadj=compbasedadj,
-            filter=filter,
-            evalue=evalue,
-            maxhit=maxhit,
-            dmode=dmode,
-        )
-
+        try:
+            synthases = search.search(
+                mode=mode,
+                query_file=query_file,
+                query_ids=query_ids,
+                cdsid=cdsid,
+                domain_file=domain_file,
+                classify_file=classify_file,
+                results_file=results_file,
+                database=database,
+                smode=smode,
+                useid1=useid1,
+                compbasedadj=compbasedadj,
+                filter=filter,
+                evalue=evalue,
+                maxhit=maxhit,
+                dmode=dmode,
+            )
+        except ValueError:
+            LOG.exception("Search failed! Exiting...")
+            return
     if long_form:
         print(synthases.to_long(), flush=True, file=output)
     else:
