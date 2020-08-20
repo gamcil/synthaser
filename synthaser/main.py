@@ -46,9 +46,6 @@ def synthaser(
     results_file=None,
 ):
     """Run synthaser."""
-
-    LOG.info("Starting synthaser")
-
     # Set flag to prevent re-writing the JSON we load from
     _json_loaded = False
 
@@ -94,10 +91,10 @@ def synthaser(
         plot = None if plot is True else plot
         plot_synthases(synthases, plot)
 
-    LOG.info("Finished synthaser")
-
 
 def main():
+    LOG.info("Starting synthaser")
+
     args = parsers.parse_args(sys.argv[1:])
 
     if args.command == "getdb":
@@ -106,6 +103,14 @@ def main():
     elif args.command == "getseq":
         container = search.prepare_input(query_ids=args.sequence_ids)
         print(container.to_fasta(), file=args.output)
+
+    elif args.command == "genbank":
+        from synthaser import genbank
+        genbank.convert(
+            args.genbank,
+            output=args.output,
+            antismash=args.antismash
+        )
 
     elif args.command == "search":
         synthaser(
@@ -147,6 +152,21 @@ def main():
             domains.download(args.domain_file, folder=args.folder, indent=args.indent)
         elif args.subcommand == "summary":
             domains.summary(args.rule_file, args.rules, args.families)
+
+    elif args.command == "extract":
+        from synthaser import extract
+        with open(args.session) as fp:
+            synthases = models.SynthaseContainer.from_json(fp)
+        extract.extract(
+            synthases,
+            args.prefix,
+            types=args.types,
+            classes=args.classes,
+            families=args.families,
+            mode=args.mode,
+        )
+
+    LOG.info("Done!")
 
 
 if __name__ == "__main__":
