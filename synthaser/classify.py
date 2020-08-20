@@ -167,8 +167,9 @@ class Rule:
                     if flag and domain.type == key:
                         domain.type = value["to"]
             else:
-                if domain.type == key:
-                    domain.type = value
+                for domain in domains:
+                    if domain.type == key:
+                        domain.type = value
 
     def valid_family(self, domain):
         """Checks a given domain matches a specified CDD family in the rule.
