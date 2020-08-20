@@ -203,19 +203,6 @@ def add_getdb_subparser(subparsers):
     )
 
 
-def add_rules_subparser(subparsers):
-    """Domain rule file generator module"""
-    p = subparsers.add_parser(
-        "rulegen",
-        help="Generate domain rule files",
-    )
-    p.add_argument(
-        "skeleton",
-        type=argparse.FileType(),
-        help="Rules skeleton JSON file",
-    )
-
-
 def add_domain_file_argument(parser):
     parser.add_argument(
         "domain_file",
@@ -314,7 +301,23 @@ def add_domain_rules_subparser(subparsers):
         "domains",
         help=text,
         description=text,
-        epilog="Cameron L.M. Gilchrist, 2020.",
+        epilog="Usage examples\n--------------\n"
+        "Download and build CDD family database:\n"
+        "  $ synthaser domains download cdd.json\n\n"
+        "Create a new domain rule file from a skeleton:\n"
+        "  $ synthaser domains update cdd.json myrules.json \\\n"
+        "      --file skeleton.txt\n\n"
+        "Add the PKS_KS domain family as a KS rule:\n"
+        "  $ synthaser domains update cdd.json myrules.json \\\n"
+        "      --type KS --name PKS_KS\n\n"
+        "...and remove it:\n"
+        "  $ synthaser domains remove myrules.json --families PKS_KS\n\n"
+        "Get the CDD accession for PKS_KS (smart00825):\n"
+        "  $ synthaser domains convert cdd.json --names PKS_KS\n\n"
+        "Print a summary of a domain rule file:\n"
+        "  $ synthaser domains summary myrules.json\n\n"
+        "Cameron L.M. Gilchrist, 2020.",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
     )
     subparsers = parser.add_subparsers(dest="subcommand")
     add_download_cdd_subparser(subparsers)
@@ -322,6 +325,58 @@ def add_domain_rules_subparser(subparsers):
     add_remove_rule_subparser(subparsers)
     add_convert_subparser(subparsers)
     add_summary_subparser(subparsers)
+
+
+def add_extract_subparser(subparsers):
+    parser = subparsers.add_parser(
+        "extract",
+        help="Extract domain/synthase sequences from search results",
+        description="Extract domain/synthase sequences from search results.",
+        epilog="Usage examples\n--------------\n"
+        "Extract KS, A and TE domain sequences:\n"
+        "  $ synthaser extract session.json out_ --types KS A TE\n"
+        "  Output: out_KS.faa out_A.faa out_TE.faa\n\n"
+        "Extract NRPS and non-reducing PKS sequences:\n"
+        "  $ synthaser extract session.json out_ \\\n"
+        "      --mode synthase \\\n"
+        "      --classes Non-reducing NRPS\n"
+        "  Output: out_Non-reducing.faa out_NRPS.faa\n\n"
+        "Extract PKS_KS domains (CDD) only from highly-reducing PKSs:\n"
+        "  $ synthaser extract session.json out_ \\\n"
+        "      --families PKS_KS \\\n"
+        "      --classes Highly-reducing\n"
+        "  Output: out_PKS_KS.faa\n\n"
+        "Cameron L.M. Gilchrist, 2020.",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
+    parser.add_argument("session", help="Synthaser session file")
+    parser.add_argument("prefix", help="Output file prefix")
+    parser.add_argument(
+        "--mode",
+        default="domain",
+        choices=["domain", "synthase"],
+        help="Extract domain sequences or whole synthases from a session file"
+    )
+    parser.add_argument("--types", nargs="+", help="Domain types")
+    parser.add_argument("--classes", nargs="+", help="Sequence classifications")
+    parser.add_argument("--families", nargs="+", help="CDD families")
+
+
+def add_genbank_subparser(subparsers):
+    parser = subparsers.add_parser(
+        "genbank",
+        help="Extract protein sequences from GenBank files for analysis",
+        description="Extract protein sequences from GenBank files."
+        " To extract PKS or NRPS sequences from antiSMASH GenBank files,"
+        " use the --antismash option."
+    )
+    parser.add_argument("genbank", help="GenBank file")
+    parser.add_argument("output", help="Output file name")
+    parser.add_argument(
+        "--antismash",
+        action="store_true",
+        help="Extract PKS/NRPS sequences from an antiSMASH file"
+    )
 
 
 def get_parser():
@@ -339,6 +394,8 @@ def get_parser():
     add_domain_rules_subparser(subparsers)
     add_getdb_subparser(subparsers)
     add_getseq_subparser(subparsers)
+    add_extract_subparser(subparsers)
+    add_genbank_subparser(subparsers)
     return parser
 
 
