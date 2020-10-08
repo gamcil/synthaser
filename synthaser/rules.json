@@ -1,7 +1,39 @@
 {
+	"graph": [
+		"Hybrid",
+		{
+			"PKS": [
+				"Multi-modular PKS",
+				{
+					"Type I": [
+						"Highly-reducing",
+						"Partially-reducing",
+						"Non-reducing"
+					]
+				},
+				"Type III PKS"
+			]
+		},
+		{
+			"FAS": [
+				"alpha subunit",
+				"beta subunit",
+				"HMG-CoA synthase",
+				"Thiolase"
+			]
+		},
+		"NRPS",
+		"NRPS-like"
+	],
 	"rules": [
 		{
 			"name": "Hybrid",
+			"rename": {
+				"ACP": {
+					"after": ["A", "C"],
+					"to": "T"
+				}
+			},
 			"domains": ["KS", "A", "C"],
 			"evaluator": "0 and (1 or 2)"
 		},
@@ -45,7 +77,7 @@
 		{
 			"name": "Non-reducing",
 			"domains": ["SAT", "PT"],
-			"evaluator": "0"
+			"evaluator": "0 and 1"
 		},
 		{
 			"name": "Type III PKS",
@@ -64,11 +96,6 @@
 			"rename": {"ACP": "T"},
 			"domains": ["A", "C"],
 			"evaluator": "any([0, 1])"
-		},
-		{
-			"name": "PKS-NRPS",
-			"domains": ["KS", "A", "C"],
-			"evaluator": "0 and (1 or 2)"
 		},
 		{
 			"name": "FAS",
@@ -113,25 +140,5 @@
 			},
 			"evaluator": "0"
 		}
-	],
-	"graph": [
-		"Hybrid",
-		{
-			"PKS": [
-				"Multi-modular PKS",
-				{"Type I": ["Highly-reducing", "Partially-reducing", "Non-reducing"]},
-				"Type III PKS"
-			]
-		},
-		{
-			"FAS": [
-				"alpha subunit",
-				"beta subunit",
-				"HMG-CoA synthase",
-				"Thiolase"
-			]
-		},
-		"NRPS",
-		"NRPS-like"
 	]
 }

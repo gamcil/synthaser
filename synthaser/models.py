@@ -61,7 +61,50 @@ class Synthase(Serialiser):
             return self.header == other.header
         raise NotImplementedError
 
-    def extract_domains(self):
+    def contains(self, classes=None, types=None, families=None):
+        """Checks if Synthase contains given classifications, domain
+        families or types."""
+        return (
+            classes and not set(classes).isdisjoint(self.classification)
+            or types and not set(types).isdisjoint(d.type for d in self.domains)
+            or families and (
+                not set(families).isdisjoint(d.accession for d in self.domains)
+                or not set(families).isdisjoint(d.domain for d in self.domains)
+            )
+        )
+
+    def extract_domains(self, types=None, families=None):
+        """Extract specific domain type/family sequences from this Synthase.
+        """
+        if not self.domains:
+            raise ValueError("Synthase has no domains")
+        if not self.sequence:
+            raise ValueError("Synthase has no sequence")
+
+        # If nothing specified, extract all
+        if not (types or families):
+            return self.extract_all_domains()
+
+        output = defaultdict(lambda: defaultdict(list))
+
+        for domain in self.domains:
+            # Slice from parent sequence
+            sequence = domain.slice(self.sequence)
+
+            # Domain types
+            if types and domain.type in types:
+                output["types"][domain.type].append(sequence)
+
+            # Specific domain families
+            if families and (
+                domain.domain in families
+                or domain.accession in families
+            ):
+                output["families"][domain.domain].append(sequence)
+
+        return output
+
+    def extract_all_domains(self):
         """Extracts all domain sequences from this synthase.
 
         For example, given a Synthase:
@@ -77,7 +120,7 @@ class Synthase(Serialiser):
 
         Then, we can call this function to extract the domain sequences:
 
-        >>> synthase.extract_domains()
+        >>> synthase.extract_all_domains()
         {'KS':['ACGT...'], 'AT':['ACGT...']}
 
         Returns:
@@ -155,6 +198,7 @@ class Domain(Serialiser):
 
     def __init__(
         self,
+        pssm=None,
         type=None,
         domain=None,
         start=None,
@@ -165,6 +209,7 @@ class Domain(Serialiser):
         accession=None,
         superfamily=None,
     ):
+        self.pssm = pssm
         self.type = type
         self.domain = domain
         self.start = start
@@ -176,8 +221,6 @@ class Domain(Serialiser):
         self.superfamily = superfamily
 
     def __str__(self):
-        if self.partial in ("C", "N", "NC"):
-            return f"({self.type})"
         return self.type
 
     # TODO: rework, or move this to e.g. domain1.equals(domain2)
@@ -216,6 +259,7 @@ class Domain(Serialiser):
 
     def to_dict(self):
         return {
+            "pssm": self.pssm,
             "type": self.type,
             "domain": self.domain,
             "start": self.start,
@@ -306,7 +350,38 @@ class SynthaseContainer(UserList):
         """Load Synthase objects from JSON."""
         return cls(Synthase.from_dict(entry) for entry in json.load(handle))
 
-    def extract_domains(self):
+    def filter(self, classes=None, types=None, families=None):
+        filtered = [
+            synthase
+            for synthase in self
+            if synthase.contains(
+                classes=classes,
+                types=types,
+                families=families,
+            )
+        ]
+        return type(self)(synthases=filtered)
+
+    def extract_synthases(self, classes=None, types=None, families=None):
+        """Bin entire synthase sequences."""
+        result = {
+            "types": defaultdict(list),
+            "classes": defaultdict(list),
+            "families": defaultdict(list),
+        }
+        for synthase in self:
+            for key, values in zip(
+                ["classes", "types", "families"],
+                [classes, types, families],
+            ):
+                if not values:
+                    continue
+                for value in values:
+                    if synthase.contains(**{key: [value]}):
+                        result[key][value].append(synthase)
+        return result
+
+    def extract_domains(self, classes=None, types=None, families=None, by="sequence"):
         """Extract domain sequences from Synthase objects in this container.
 
         For example, given a `SynthaseContainer` containing `Synthase` objects:
@@ -319,16 +394,41 @@ class SynthaseContainer(UserList):
         >>> container.extract_domains()
         {'KS': [('one_KS_1', 'IAIA...'), ('two_KS_1', 'IAIE...')], 'AT': [...]}
         """
-        combined = defaultdict(list)
+        if by == "sequence":
+            result = {}
+        elif by == "query":
+            result = {
+                "types": defaultdict(dict),
+                "families": defaultdict(dict),
+            }
+        else:
+            raise ValueError("Expected by='sequence' or by='query'")
+
         for synthase in self:
+            if classes and not synthase.contains(classes=classes):
+                LOG.warning("Sequence not one of: %s, skipping", classes)
+                continue
             if not synthase.domains:
-                LOG.warning("%s has no domains", synthase.header)
-            for type, sequences in synthase.extract_domains().items():
-                combined[type].extend(
-                    (f"{synthase.header}_{type}_{i}", sequence)
-                    for i, sequence in enumerate(sequences)
-                )
-        return dict(combined)
+                LOG.warning("%s has no domains, skipping", synthase.header)
+                continue
+            sequences = synthase.extract_domains(
+                types=types,
+                families=families
+            )
+            if not sequences:
+                LOG.warning("No domains extracted (%s), skipping", synthase.header)
+                continue
+            if by == "sequence":
+                result[synthase.header] = sequences
+            elif by == "query":
+                for key in result:
+                    if key not in sequences:
+                        continue
+                    for label, extracts in sequences[key].items():
+                        if label not in result[key]:
+                            result[key][label] = {}
+                        result[key][label][synthase.header] = extracts
+        return result
 
     def add_sequences(self, sequences):
         """Add amino acid sequence to Synthase objects in this container."""
