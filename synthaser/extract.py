@@ -38,7 +38,7 @@ def write(sequences, prefix):
                 fp.write(text)
 
 
-def extract(source, prefix, mode="domains", classes=None, types=None, families=None):
+def extract(source, prefix, mode="domain", classes=None, types=None, families=None):
     """Extract domain or synthase sequences from a synthaser search session.
 
     Note that if mode='domains' and classes are specified, they will be used
@@ -47,7 +47,7 @@ def extract(source, prefix, mode="domains", classes=None, types=None, families=N
     if not isinstance(source, SynthaseContainer):
         raise TypeError("Expected SynthaseContainer object")
 
-    if mode == "domains":
+    if mode == "domain":
         LOG.info("Extracting domain sequence(s) from synthase(s)")
         sequences = source.extract_domains(
             classes=classes,
@@ -63,7 +63,7 @@ def extract(source, prefix, mode="domains", classes=None, types=None, families=N
             families=families,
         )
     else:
-        raise ValueError("Expected 'domains' or 'synthase'")
+        raise ValueError("Expected 'domain' or 'synthase'")
 
     LOG.info("Writing sequences to file(s):")
     write(sequences, prefix)

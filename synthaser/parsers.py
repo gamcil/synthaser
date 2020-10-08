@@ -149,7 +149,21 @@ def add_search_subparser(subparsers):
         "search",
         help="Run a synthaser search",
         description="Run a synthaser search.",
-        epilog="Cameron L.M. Gilchrist 2019",
+        epilog="Usage examples\n--------------\n"
+        "Analyse sequences in a FASTA file and generate a plot:\n"
+        "  $ synthaser search -qf sequences.fa -p\n\n"
+        "Analyse sequences from the NCBI Protein database and save the search:\n"
+        "  $ synthaser search -qi Q0CJ59.1 CAA39295.1 -json session.json\n\n"
+        "Use custom domain and classification rule files:\n"
+        "  $ synthaser search -qf sequences.fa \\\n"
+        "      -df domain_rules.json \\\n"
+        "      -cf classification_rules.json\n\n"
+        "Download a CDD database and do a local search:\n"
+        "  $ synthaser getdb Smart mydatabases\n"
+        "  $ synthaser search -qf sequences.fa \\\n"
+        "      -m local -db mydatabases/Smart_LE/Smart\n\n"
+        "Cameron L.M. Gilchrist, 2020.",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
     )
     add_input_group(parser)
     add_output_group(parser)
@@ -352,6 +366,7 @@ def add_extract_subparser(subparsers):
     parser.add_argument("session", help="Synthaser session file")
     parser.add_argument("prefix", help="Output file prefix")
     parser.add_argument(
+        "-m",
         "--mode",
         default="domain",
         choices=["domain", "synthase"],
@@ -382,9 +397,9 @@ def add_genbank_subparser(subparsers):
 def get_parser():
     parser = argparse.ArgumentParser(
         "synthaser",
-        epilog="Cameron L.M. Gilchrist 2020",
         description="synthaser: a Python toolkit for analysing domain architecture of"
         " secondary metabolite megasynth (et) ases with NCBI CD-Search.",
+        epilog="Cameron L.M. Gilchrist 2020",
     )
     parser.add_argument(
         "--version", action="version", version="%(prog)s " + __version__
