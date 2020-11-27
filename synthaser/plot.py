@@ -60,6 +60,8 @@ class CustomHandler(http.server.BaseHTTPRequestHandler):
             path, mime = self._dir / "d3.min.js", "text/javascript"
         elif self.path == "/synthaser.js":
             path, mime = self._dir / "synthaser.js", "text/javascript"
+        elif self.path == "/synthaser.min.js":
+            path, mime = self._dir / "synthaser.min.js", "text/javascript"
         if not path:
             return
         with path.open("rb") as fp:
@@ -98,6 +100,7 @@ def save_html(data, output):
     css_string = '<link href="index.css" rel="stylesheet"></link>'
     d3_string = '<script src="d3.min.js"></script>'
     sy_string = '<script src="synthaser.js"></script>'
+    sy_min = '<script src="synthaser.min.js"></script>'
 
     with (directory / "index.css").open() as fp:
         css = fp.read()
@@ -108,8 +111,12 @@ def save_html(data, output):
         html = html.replace(d3_string, f"<script>{d3}</script>")
 
     with (directory / "synthaser.js").open() as fp:
-        sy = f"const data={json.dumps(data)}" + fp.read()
+        sy = f"const data={json.dumps(data)};" + fp.read()
         html = html.replace(sy_string, f"<script>{sy}</script>")
+
+    with (directory / "synthaser.min.js").open() as fp:
+        text = fp.read()
+        html = html.replace(sy_min, f"<script>{text}</script>")
 
     with open(output, "w") as fp:
         fp.write(html)

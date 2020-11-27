@@ -5,6 +5,7 @@
 		<title>synthaser</title>
 		<link href="index.css" rel="stylesheet"></link>
 		<script src="d3.min.js"></script>
+		<script src="synthaser.min.js"></script>
 	</head>
 	<body>
 		<main>
@@ -22,33 +23,68 @@
 					</pre>
 					<hr>
 					<p>
-						Adjust the shrinkage factor of the plot.
-						Plotted sequence lengths are calculated by dividing total
-						residues by this number (higher numbers = shorter sequences),
-						and thus stay consistent after filtering/between runs.
-					</p>
-					<div id="div-plot-width">
-						<input
-							id="rng-plot-width"
-							type="range"
-							min="1"
-							max="15"
-							value="6"
-							step="0.1"
-						>
-						<input id="txt-plot-width" type="text" value="6">
-					</div>
-					<hr>
-					<p>
 						Click the names of sequences to hide them from the plot.
-						The original view can be restored using the reset filters button.
 					</p>
 					<p>
 						Domain colours can be changed by clicking the corresponding box in
 						the plot legend.
 					</p>
-					<button id="btn-reset-filters">Reset filters</button>
 					<button id="btn-save-svg">Save SVG</button>
+					<hr>
+					<div class="settings">
+						<b>Plot settings</b>
+						<div class="setting">
+							<label for="input-plotwidth">Max. sequence length (px):</label>
+							<input type="number" id="input-plotwidth" min="100" value="600" default="600" step="10">
+						</div>
+						<div class="setting">
+							<label for="input-title-fontsize">Title font size:</label>
+							<input type="number" id="input-title-fontsize" min="1" value="16" default="16">
+						</div>
+						<div class="setting">
+							<label for="input-xlabel-fontsize">Bottom label font size:</label>
+							<input type="number" id="input-xlabel-fontsize" min="1" value="14" default="14">
+						</div>
+
+						<b>Synthase settings</b>
+						<div class="setting">
+							<label for="input-barheight">Bar height:</label>
+							<input type="number" id="input-barheight" min="1" max="50" value="20" default="20">
+						</div>
+						<div class="setting">
+							<label for="input-headwidth">Head width:</label>
+							<input type="number" id="input-headwidth" min="0" max="30" value="10" default="10">
+						</div>
+						<div class="setting">
+							<label for="input-ylabel-fontsize">Font size:</label>
+							<input type="number" id="input-ylabel-fontsize" min="1" value="12" default="12">
+						</div>
+						<div class="setting">
+							<label for="input-ylabel-gap">Label gap:</label>
+							<input type="number" id="input-ylabel-gap" min="1" value="10" default="10">
+						</div>
+						<div class="setting">
+							<label for="input-ylabel-padding">Padding:</label>
+							<input type="number" id="input-ylabel-padding" min="0" max="1" value="0.4" default="0.4" step="0.1">
+						</div>
+
+						<b>Legend settings</b>
+						<div class="setting">
+							<label for="input-legend-cellheight">Cell height:</label>
+							<input type="number" id="input-legend-cellheight" min="1" max="50" value="20" default="20">
+						</div>
+						<div class="setting">
+							<label for="input-legend-cellwidth">Cell width:</label>
+							<input type="number" id="input-legend-cellwidth" min="1" max="60" value="30" default="30">
+						</div>
+						<div class="setting">
+							<label for="input-legend-cellpadding">Cell padding:</label>
+							<input type="number" id="input-legend-cellpadding" min="0.0" max="1.0" value="0.3" default="0.3" step="0.1">
+						</div>
+						<div class="setting">
+							<label for="input-legend-fontsize">Font size:</label>
+							<input type="number" id="input-legend-fontsize" min="1" value="12" default="12">
+						</div>
 				</div>
 			</div>
 			<script>
