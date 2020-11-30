@@ -44,6 +44,38 @@ function download(blob, filename) {
   document.body.removeChild(link);
 }
 
+function getDomainTypes(data) {
+  return data.order.reduce((a, b) => {
+    data.synthases[b].domains
+      .map(d => d.type)
+      .forEach(d => a.add(d))
+    return a
+  }, new Set())
+}
+
+function getDomainFasta(data, type) {
+  if (!type) return
+  let sequences = []
+  for (const uid of data.order) {
+    const synthase = data.synthases[uid]
+    let index = 1
+    for (const d of synthase.domains) {
+      if (d.type !== type) continue
+      let header = `${synthase.header}_${d.start}-${d.end}_${type}_${index}`
+      let slice = synthase.sequence.slice(d.start, d.end)
+      let record = `>${header}\n${slice}`
+      sequences.push(record) 
+      index += 1
+    }
+  }
+  return sequences.join("\n")
+}
+
+function getDomainBlob(data, type) {
+  let fasta = getDomainFasta(data, type)  
+  return new Blob([fasta], {type: "text/plain", charset: "utf-8"});
+}
+
 function build(data) {
   const chart = new SynthasePlot.SynthasePlot()
   const plot = d3.select("#plot")
@@ -90,6 +122,22 @@ function build(data) {
     .on("click", () => {
       const blob = serialise(svg)
       download(blob, "synthaser.svg")
+    })
+
+  let domainTypes = getDomainTypes(data)
+  d3.select("#select-domain-type")
+    .selectAll("option")
+    .data(domainTypes)
+    .join("option")
+    .text(d => d)
+    .attr("value", d => d)
+
+  d3.select("#btn-download-domains")
+    .on("click", () => {
+      let select = document.getElementById("select-domain-type")
+      let type = select.options[select.selectedIndex].value
+      let blob = getDomainBlob(data, type)
+      download(blob, `synthaser_${type}_domains.faa`)
     })
 }
 
