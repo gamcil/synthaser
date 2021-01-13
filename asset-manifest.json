@@ -1,0 +1,25 @@
+{
+  "files": {
+    "main.css": "/synthaser/static/css/main.d374b7a4.chunk.css",
+    "main.js": "/synthaser/static/js/main.c51690c7.chunk.js",
+    "main.js.map": "/synthaser/static/js/main.c51690c7.chunk.js.map",
+    "runtime-main.js": "/synthaser/static/js/runtime-main.80abd570.js",
+    "runtime-main.js.map": "/synthaser/static/js/runtime-main.80abd570.js.map",
+    "static/css/2.679831fc.chunk.css": "/synthaser/static/css/2.679831fc.chunk.css",
+    "static/js/2.df183d72.chunk.js": "/synthaser/static/js/2.df183d72.chunk.js",
+    "static/js/2.df183d72.chunk.js.map": "/synthaser/static/js/2.df183d72.chunk.js.map",
+    "static/js/3.01438506.chunk.js": "/synthaser/static/js/3.01438506.chunk.js",
+    "static/js/3.01438506.chunk.js.map": "/synthaser/static/js/3.01438506.chunk.js.map",
+    "index.html": "/synthaser/index.html",
+    "static/css/2.679831fc.chunk.css.map": "/synthaser/static/css/2.679831fc.chunk.css.map",
+    "static/css/main.d374b7a4.chunk.css.map": "/synthaser/static/css/main.d374b7a4.chunk.css.map",
+    "static/js/2.df183d72.chunk.js.LICENSE.txt": "/synthaser/static/js/2.df183d72.chunk.js.LICENSE.txt"
+  },
+  "entrypoints": [
+    "static/js/runtime-main.80abd570.js",
+    "static/css/2.679831fc.chunk.css",
+    "static/js/2.df183d72.chunk.js",
+    "static/css/main.d374b7a4.chunk.css",
+    "static/js/main.c51690c7.chunk.js"
+  ]
+}
