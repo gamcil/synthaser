@@ -59,7 +59,7 @@ export const FilterItem = props => {
           className="select"
           options={domainOptions}
           onChange={handleChangeDomains}
-          value={props.data.domains.map(d => domainOptions.find(o => o.name === d.name))}
+          value={props.data.domains.map(d => domainOptions.find(o => o.value === d))}
           isMulti
         />
       </div>
