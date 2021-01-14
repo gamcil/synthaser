@@ -8,7 +8,7 @@ export const DomainItem = props => {
   const onChange = domains => props.handleChange({
     target: {
       name: "domains",
-      value: domains
+      value: domains || []
     }
   })
 

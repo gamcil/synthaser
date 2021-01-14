@@ -68,10 +68,10 @@ export const Form = () => {
    * Creates a function which can remove a domain object from state.
    */
   const handleRemoveDomain = index => () => {
-    setState(state => ({
+    setState({
       ...state,
-      domains: state.domains.filter((_, dIndex) => index !== dIndex )
-    }))
+      domains: state.domains.filter((_, dIndex) => index !== dIndex)
+    })
   }
 
   /**
