@@ -1,144 +1,1115 @@
 {
-	"graph": [
-		"Hybrid",
-		{
-			"PKS": [
-				"Multi-modular PKS",
-				{
-					"Type I": [
-						"Highly-reducing",
-						"Partially-reducing",
-						"Non-reducing"
-					]
-				},
-				"Type III PKS"
-			]
-		},
-		{
-			"FAS": [
-				"alpha subunit",
-				"beta subunit",
-				"HMG-CoA synthase",
-				"Thiolase"
-			]
-		},
-		"NRPS",
-		"NRPS-like"
-	],
-	"rules": [
-		{
-			"name": "Hybrid",
-			"rename": {
-				"ACP": {
-					"after": ["A", "C"],
-					"to": "T"
-				}
-			},
-			"domains": ["KS", "A", "C"],
-			"evaluator": "0 and (1 or 2)"
-		},
-		{
-			"name": "PKS",
-			"domains": ["KS"],
-			"filters": {"KS": ["PKS_KS", "PKS", "CHS_like"]},
-			"evaluator": "0"
-		},
-		{
-			"name": "Multi-modular PKS",
-			"domains": ["KS", "KS"],
-			"evaluator": "0 and 1"
-		},
-		{
-			"name": "Type I",
-			"domains": ["AT"],
-			"filters": {"AT": ["PKS_AT", "Acyl_transf_1"]},
-			"evaluator": "0"
-		},
-		{
-			"name": "Highly-reducing",
-			"domains": ["DH", "ER", "KR"],
-			"filters": {
-				"DH": ["PKS_DH", "PS-DH"],
-				"ER": ["PKS_ER", "enoyl_red"],
-				"KR": ["PKS_KR", "KR"]
-			},
-			"evaluator": "all([0, 1, 2])"
-		},
-		{
-			"name": "Partially-reducing",
-			"domains": ["DH", "ER", "KR"],
-			"filters": {
-				"DH": ["PKS_DH", "PS-DH"],
-				"ER": ["PKS_ER", "enoyl_red"],
-				"KR": ["PKS_KR", "KR"]
-			},
-			"evaluator": "any([0, 1, 2])"
-		},
-		{
-			"name": "Non-reducing",
-			"domains": ["SAT", "PT"],
-			"evaluator": "0 and 1"
-		},
-		{
-			"name": "Type III PKS",
-			"domains": ["KS"],
-			"filters": {"KS": ["CHS_like"]},
-			"evaluator": "0"
-		},
-		{
-			"name": "NRPS",
-			"rename": {"ACP": "T"},
-			"domains": ["A", "T", "ACP", "C"],
-			"evaluator": "0 and (1 or 2) and 3"
-		},
-		{
-			"name": "NRPS-like",
-			"rename": {"ACP": "T"},
-			"domains": ["A", "C"],
-			"evaluator": "any([0, 1])"
-		},
-		{
-			"name": "FAS",
-			"domains": ["KS"],
-			"filters": {"KS": ["FabB", "KAS_I_II", "KAS_III", "fabF"]},
-			"evaluator": "0"
-		},
-		{
-			"name": "alpha subunit",
-			"domains": ["AT", "KR", "PPT"],
-			"filters": {
-				"MPT": ["FabD"],
-				"ACP": ["FabD"],
-				"KR": ["KR_fFAS_SDR_c_like"],
-				"PPT": ["AcpS", "ACPS", "acpS"]
-			},
-			"evaluator": "all([0, 1, 2, 3])"
-		},
-		{
-			"name": "beta subunit",
-			"domains": ["AT", "ER", "DH", "AT"],
-			"filters": {
-				"ER": ["COG4981"],
-				"DH": ["FAS_MaoC"],
-				"AT": ["FabD"]
-			},
-			"evaluator": "all([0, 1, 2, 3])"
-		},
-		{
-			"name": "HMG-CoA synthase",
-			"domains": ["KS"],
-			"filters": {
-				"KS": ["HMG-CoA-S_euk"]
-			},
-			"evaluator": "0"
-		},
-		{
-			"name": "Thiolase",
-			"domains": ["KS"],
-			"filters": {
-				"KS": ["SCP-x_thiolase", "AcCoA-C_Actrans", "thiolase", "PLN02287"]
-			},
-			"evaluator": "0"
-		}
-	]
+  "domains": [
+    {
+      "uuid": "50479aa8-2001-41eb-8bae-b6d6327b304c",
+      "name": "C",
+      "domains": [
+        {
+          "pssm": 380458,
+          "accession": "cd19535",
+          "name": "Cyc_NRPS",
+          "length": 423,
+          "bitscore": 348.324,
+          "superfamily": "cl40425",
+          "label": "Cyc_NRPS [cd19535]",
+          "value": "Cyc_NRPS"
+        },
+        {
+          "pssm": 380456,
+          "accession": "cd19533",
+          "name": "starter-C_NRPS",
+          "length": 419,
+          "bitscore": 482.254,
+          "superfamily": "cl40425",
+          "label": "starter-C_NRPS [cd19533]",
+          "value": "starter-C_NRPS"
+        },
+        {
+          "pssm": 380461,
+          "accession": "cd19538",
+          "name": "LCL_NRPS",
+          "length": 432,
+          "bitscore": 638.54,
+          "superfamily": "cl40425",
+          "label": "LCL_NRPS [cd19538]",
+          "value": "LCL_NRPS"
+        },
+        {
+          "pssm": 380454,
+          "accession": "cd19531",
+          "name": "LCL_NRPS-like",
+          "length": 427,
+          "bitscore": 287.329,
+          "superfamily": "cl40425",
+          "label": "LCL_NRPS-like [cd19531]",
+          "value": "LCL_NRPS-like"
+        },
+        {
+          "pssm": 380470,
+          "accession": "cd20480",
+          "name": "ArgR-Cyc_NRPS-like",
+          "length": 406,
+          "bitscore": 714.278,
+          "superfamily": "cl40425",
+          "label": "ArgR-Cyc_NRPS-like [cd20480]",
+          "value": "ArgR-Cyc_NRPS-like"
+        },
+        {
+          "pssm": 380465,
+          "accession": "cd19543",
+          "name": "DCL_NRPS",
+          "length": 423,
+          "bitscore": 420.456,
+          "superfamily": "cl40425",
+          "label": "DCL_NRPS [cd19543]",
+          "value": "DCL_NRPS"
+        },
+        {
+          "pssm": 380466,
+          "accession": "cd19544",
+          "name": "E-C_NRPS",
+          "length": 413,
+          "bitscore": 476.159,
+          "superfamily": "cl40425",
+          "label": "E-C_NRPS [cd19544]",
+          "value": "E-C_NRPS"
+        },
+        {
+          "pssm": 380455,
+          "accession": "cd19532",
+          "name": "C_PKS-NRPS",
+          "length": 421,
+          "bitscore": 402.605,
+          "superfamily": "cl40425",
+          "label": "C_PKS-NRPS [cd19532]",
+          "value": "C_PKS-NRPS"
+        },
+        {
+          "pssm": 334202,
+          "accession": "pfam00668",
+          "name": "Condensation",
+          "length": 455,
+          "bitscore": 345.862,
+          "superfamily": "cl23853",
+          "label": "Condensation [pfam00668]",
+          "value": "Condensation"
+        }
+      ]
+    },
+    {
+      "uuid": "55909763-7575-45f6-98c2-133d15237a16",
+      "name": "E",
+      "domains": [
+        {
+          "pssm": 380457,
+          "accession": "cd19534",
+          "name": "E_NRPS",
+          "length": 428,
+          "bitscore": 363.495,
+          "superfamily": "cl40425",
+          "label": "E_NRPS [cd19534]",
+          "value": "E_NRPS"
+        }
+      ]
+    },
+    {
+      "uuid": "63a88ab8-2409-41d4-bf4b-336eac062c67",
+      "name": "PT",
+      "domains": [
+        {
+          "pssm": 275325,
+          "accession": "TIGR04532",
+          "name": "PT_fungal_PKS",
+          "length": 324,
+          "bitscore": 202.466,
+          "superfamily": "cl00509",
+          "label": "PT_fungal_PKS [TIGR04532]",
+          "value": "PT_fungal_PKS"
+        }
+      ]
+    },
+    {
+      "uuid": "f609b756-7353-46c9-8e72-36f73d081338",
+      "name": "cAT",
+      "domains": [
+        {
+          "pssm": 376382,
+          "accession": "pfam00755",
+          "name": "Carn_acyltransf",
+          "length": 577,
+          "bitscore": 255.551,
+          "superfamily": "pfam00755",
+          "label": "Carn_acyltransf [pfam00755]",
+          "value": "Carn_acyltransf"
+        }
+      ]
+    },
+    {
+      "uuid": "83ae9939-44ac-423b-8a77-64dcf5ff3975",
+      "name": "DH",
+      "domains": [
+        {
+          "pssm": 214837,
+          "accession": "smart00826",
+          "name": "PKS_DH",
+          "length": 167,
+          "bitscore": 76.8814,
+          "superfamily": "cl00509",
+          "label": "PKS_DH [smart00826]",
+          "value": "PKS_DH"
+        }
+      ]
+    },
+    {
+      "uuid": "7fece1f4-186d-4635-a90f-e4298782387f",
+      "name": "AT",
+      "domains": [
+        {
+          "pssm": 214838,
+          "accession": "smart00827",
+          "name": "PKS_AT",
+          "length": 298,
+          "bitscore": 201.477,
+          "superfamily": "cl08282",
+          "label": "PKS_AT [smart00827]",
+          "value": "PKS_AT"
+        },
+        {
+          "pssm": 385314,
+          "accession": "cl08282",
+          "name": "Acyl_transf_1",
+          "length": 0,
+          "label": "Acyl_transf_1 [cl08282]",
+          "value": "Acyl_transf_1"
+        }
+      ]
+    },
+    {
+      "uuid": "e266f181-2178-4277-8464-21c3ed108fe5",
+      "name": "KS",
+      "domains": [
+        {
+          "pssm": 214836,
+          "accession": "smart00825",
+          "name": "PKS_KS",
+          "length": 298,
+          "bitscore": 241.079,
+          "superfamily": "cl09938",
+          "label": "PKS_KS [smart00825]",
+          "value": "PKS_KS"
+        },
+        {
+          "pssm": 238429,
+          "accession": "cd00833",
+          "name": "PKS",
+          "length": 421,
+          "bitscore": 167.35,
+          "superfamily": "cl09938",
+          "label": "PKS [cd00833]",
+          "value": "PKS"
+        },
+        {
+          "pssm": 238425,
+          "accession": "cd00829",
+          "name": "SCP-x_thiolase",
+          "length": 375,
+          "bitscore": 147.795,
+          "superfamily": "cl09938",
+          "label": "SCP-x_thiolase [cd00829]",
+          "value": "SCP-x_thiolase"
+        },
+        {
+          "pssm": 273826,
+          "accession": "TIGR01833",
+          "name": "HMG-CoA-S_euk",
+          "length": 457,
+          "bitscore": 790.507,
+          "superfamily": "TIGR01833",
+          "label": "HMG-CoA-S_euk [TIGR01833]",
+          "value": "HMG-CoA-S_euk"
+        },
+        {
+          "pssm": 238383,
+          "accession": "cd00751",
+          "name": "thiolase",
+          "length": 386,
+          "bitscore": 222.354,
+          "superfamily": "cl09938",
+          "label": "thiolase [cd00751]",
+          "value": "thiolase"
+        },
+        {
+          "pssm": 215161,
+          "accession": "PLN02287",
+          "name": "PLN02287",
+          "length": 452,
+          "bitscore": 632.955,
+          "superfamily": "PLN02287",
+          "label": "PLN02287 [PLN02287]",
+          "value": "PLN02287"
+        },
+        {
+          "pssm": 235987,
+          "accession": "PRK07314",
+          "name": "PRK07314",
+          "length": 411,
+          "bitscore": 601.393,
+          "superfamily": "cl09938",
+          "label": "PRK07314 [PRK07314]",
+          "value": "PRK07314"
+        },
+        {
+          "pssm": 274452,
+          "accession": "TIGR03150",
+          "name": "fabF",
+          "length": 407,
+          "bitscore": 525.512,
+          "superfamily": "cl09938",
+          "label": "fabF [TIGR03150]",
+          "value": "fabF"
+        },
+        {
+          "pssm": 223381,
+          "accession": "COG0304",
+          "name": "FabB",
+          "length": 412,
+          "bitscore": 152.8,
+          "superfamily": "cl09938",
+          "label": "FabB [COG0304]",
+          "value": "FabB"
+        },
+        {
+          "pssm": 238428,
+          "accession": "cd00832",
+          "name": "CLF",
+          "length": 399,
+          "bitscore": 503.431,
+          "superfamily": "cl09938",
+          "label": "CLF [cd00832]",
+          "value": "CLF"
+        },
+        {
+          "pssm": 238430,
+          "accession": "cd00834",
+          "name": "KAS_I_II",
+          "length": 406,
+          "bitscore": 285.201,
+          "superfamily": "cl09938",
+          "label": "KAS_I_II [cd00834]",
+          "value": "KAS_I_II"
+        },
+        {
+          "pssm": 238427,
+          "accession": "cd00831",
+          "name": "CHS_like",
+          "length": 361,
+          "bitscore": 242.515,
+          "superfamily": "cl09938",
+          "label": "CHS_like [cd00831]",
+          "value": "CHS_like"
+        },
+        {
+          "pssm": 238426,
+          "accession": "cd00830",
+          "name": "KAS_III",
+          "length": 320,
+          "bitscore": 212.4,
+          "superfamily": "cl09938",
+          "label": "KAS_III [cd00830]",
+          "value": "KAS_III"
+        }
+      ]
+    },
+    {
+      "uuid": "4019b991-5bfe-4c5f-b8a4-6748110e5c0e",
+      "name": "SAT",
+      "domains": [
+        {
+          "pssm": 374347,
+          "accession": "pfam16073",
+          "name": "SAT",
+          "length": 239,
+          "bitscore": 110.757,
+          "superfamily": "cl08282",
+          "label": "SAT [pfam16073]",
+          "value": "SAT"
+        }
+      ]
+    },
+    {
+      "uuid": "7335d609-5ef6-4a1f-9d53-257c6a869e49",
+      "name": "ACPS",
+      "domains": [
+        {
+          "pssm": 223807,
+          "accession": "COG0736",
+          "name": "AcpS",
+          "length": 127,
+          "bitscore": 88.0777,
+          "superfamily": "cl00500",
+          "label": "AcpS [COG0736]",
+          "value": "AcpS"
+        },
+        {
+          "pssm": 234610,
+          "accession": "PRK00070",
+          "name": "acpS",
+          "length": 126,
+          "bitscore": 87.108,
+          "superfamily": "cl00500",
+          "label": "acpS [PRK00070]",
+          "value": "acpS"
+        }
+      ]
+    },
+    {
+      "uuid": "9606de2c-c1c5-4d02-9c42-4750999731d8",
+      "name": "MT",
+      "domains": [
+        {
+          "pssm": 369777,
+          "accession": "pfam08241",
+          "name": "Methyltransf_11",
+          "length": 93,
+          "bitscore": 53.4302,
+          "superfamily": "cl17173",
+          "label": "Methyltransf_11 [pfam08241]",
+          "value": "Methyltransf_11"
+        },
+        {
+          "pssm": 369778,
+          "accession": "pfam08242",
+          "name": "Methyltransf_12",
+          "length": 96,
+          "bitscore": 37.7331,
+          "superfamily": "cl17173",
+          "label": "Methyltransf_12 [pfam08242]",
+          "value": "Methyltransf_12"
+        },
+        {
+          "pssm": 372616,
+          "accession": "pfam13489",
+          "name": "Methyltransf_23",
+          "length": 162,
+          "bitscore": 59.7422,
+          "superfamily": "cl17173",
+          "label": "Methyltransf_23 [pfam13489]",
+          "value": "Methyltransf_23"
+        },
+        {
+          "pssm": 379312,
+          "accession": "pfam13649",
+          "name": "Methyltransf_25",
+          "length": 96,
+          "bitscore": 36.008,
+          "superfamily": "cl17173",
+          "label": "Methyltransf_25 [pfam13649]",
+          "value": "Methyltransf_25"
+        },
+        {
+          "pssm": 316372,
+          "accession": "pfam13847",
+          "name": "Methyltransf_31",
+          "length": 150,
+          "bitscore": 67.449,
+          "superfamily": "cl17173",
+          "label": "Methyltransf_31 [pfam13847]",
+          "value": "Methyltransf_31"
+        },
+        {
+          "pssm": 100107,
+          "accession": "cd02440",
+          "name": "AdoMet_MTases",
+          "length": 107,
+          "bitscore": 29.3203,
+          "superfamily": "cl17173",
+          "label": "AdoMet_MTases [cd02440]",
+          "value": "AdoMet_MTases"
+        },
+        {
+          "pssm": 223574,
+          "accession": "COG0500",
+          "name": "SmtA",
+          "length": 257,
+          "bitscore": 28.7117,
+          "superfamily": "cl17173",
+          "label": "SmtA [COG0500]",
+          "value": "SmtA"
+        }
+      ]
+    },
+    {
+      "uuid": "38f1efc4-9d26-4a70-8887-bfbe3ae622cd",
+      "name": "TR",
+      "domains": [
+        {
+          "pssm": 273787,
+          "accession": "TIGR01746",
+          "name": "Thioester-redct",
+          "length": 367,
+          "bitscore": 305.493,
+          "superfamily": "TIGR01746",
+          "label": "Thioester-redct [TIGR01746]",
+          "value": "Thioester-redct"
+        },
+        {
+          "pssm": 187546,
+          "accession": "cd05235",
+          "name": "SDR_e1",
+          "length": 290,
+          "bitscore": 229.845,
+          "superfamily": "cl21454",
+          "label": "SDR_e1 [cd05235]",
+          "value": "SDR_e1"
+        }
+      ]
+    },
+    {
+      "uuid": "281b1c67-6f2a-4e0d-a7e7-7ccc72b5f52e",
+      "name": "TE",
+      "domains": [
+        {
+          "pssm": 214835,
+          "accession": "smart00824",
+          "name": "PKS_TE",
+          "length": 212,
+          "bitscore": 155.846,
+          "superfamily": "cl21494",
+          "label": "PKS_TE [smart00824]",
+          "value": "PKS_TE"
+        },
+        {
+          "pssm": 366397,
+          "accession": "pfam00975",
+          "name": "Thioesterase",
+          "length": 223,
+          "bitscore": 155.591,
+          "superfamily": "cl21494",
+          "label": "Thioesterase [pfam00975]",
+          "value": "Thioesterase"
+        },
+        {
+          "pssm": 223730,
+          "accession": "COG0657",
+          "name": "Aes",
+          "length": 312,
+          "bitscore": 59.5636,
+          "superfamily": "COG0657",
+          "label": "Aes [COG0657]",
+          "value": "Aes"
+        },
+        {
+          "pssm": 366166,
+          "accession": "pfam00561",
+          "name": "Abhydrolase_1",
+          "length": 245,
+          "bitscore": 93.3378,
+          "superfamily": "pfam00561",
+          "label": "Abhydrolase_1 [pfam00561]",
+          "value": "Abhydrolase_1"
+        }
+      ]
+    },
+    {
+      "uuid": "f570dec1-c1fb-4e0a-825d-699eaccdf623",
+      "name": "A",
+      "domains": [
+        {
+          "pssm": 341253,
+          "accession": "cd05930",
+          "name": "A_NRPS",
+          "length": 444,
+          "bitscore": 356.838,
+          "superfamily": "cl17068",
+          "label": "A_NRPS [cd05930]",
+          "value": "A_NRPS"
+        },
+        {
+          "pssm": 366135,
+          "accession": "pfam00501",
+          "name": "AMP-binding",
+          "length": 361,
+          "bitscore": 184.727,
+          "superfamily": "cl17068",
+          "label": "AMP-binding [pfam00501]",
+          "value": "AMP-binding"
+        }
+      ]
+    },
+    {
+      "uuid": "99182b35-9df9-4115-83f0-445f8ab6171c",
+      "name": "ACP",
+      "domains": [
+        {
+          "pssm": 214834,
+          "accession": "smart00823",
+          "name": "PKS_PP",
+          "length": 86,
+          "bitscore": 33.3777,
+          "superfamily": "cl09936",
+          "label": "PKS_PP [smart00823]",
+          "value": "PKS_PP"
+        },
+        {
+          "pssm": 177047,
+          "accession": "CHL00124",
+          "name": "acpP",
+          "length": 82,
+          "bitscore": 85.8428,
+          "superfamily": "cl09936",
+          "label": "acpP [CHL00124]",
+          "value": "acpP"
+        },
+        {
+          "pssm": 385641,
+          "accession": "cl09936",
+          "name": "PP-binding",
+          "length": 0,
+          "label": "PP-binding [cl09936]",
+          "value": "PP-binding"
+        },
+        {
+          "pssm": 373139,
+          "accession": "pfam14573",
+          "name": "PP-binding_2",
+          "length": 96,
+          "bitscore": 112.899,
+          "superfamily": "cl09936",
+          "label": "PP-binding_2 [pfam14573]",
+          "value": "PP-binding_2"
+        }
+      ]
+    },
+    {
+      "uuid": "5f1fd49d-f8a2-4f1a-a11a-e2257c3c5543",
+      "name": "KR",
+      "domains": [
+        {
+          "pssm": 350900,
+          "accession": "cl00100",
+          "name": "KR",
+          "length": 0,
+          "label": "KR [cl00100]",
+          "value": "KR"
+        },
+        {
+          "pssm": 214833,
+          "accession": "smart00822",
+          "name": "PKS_KR",
+          "length": 180,
+          "bitscore": 83.3005,
+          "superfamily": "cl21454",
+          "label": "PKS_KR [smart00822]",
+          "value": "PKS_KR"
+        },
+        {
+          "pssm": 187653,
+          "accession": "cd08950",
+          "name": "KR_fFAS_SDR_c_like",
+          "length": 259,
+          "bitscore": 368.441,
+          "superfamily": "cl21454",
+          "label": "KR_fFAS_SDR_c_like [cd08950]",
+          "value": "KR_fFAS_SDR_c_like"
+        }
+      ]
+    },
+    {
+      "uuid": "7ea25230-f83b-4dad-955e-057d3de32303",
+      "name": "ER",
+      "domains": [
+        {
+          "pssm": 227314,
+          "accession": "COG4981",
+          "name": "COG4981",
+          "length": 717,
+          "bitscore": 1062.53,
+          "superfamily": "COG4981",
+          "label": "COG4981 [COG4981]",
+          "value": "COG4981"
+        },
+        {
+          "pssm": 214840,
+          "accession": "smart00829",
+          "name": "PKS_ER",
+          "length": 287,
+          "bitscore": 250.768,
+          "superfamily": "smart00829",
+          "label": "PKS_ER [smart00829]",
+          "value": "PKS_ER"
+        },
+        {
+          "pssm": 176179,
+          "accession": "cd05195",
+          "name": "enoyl_red",
+          "length": 293,
+          "bitscore": 129.997,
+          "superfamily": "cl16912",
+          "label": "enoyl_red [cd05195]",
+          "value": "enoyl_red"
+        },
+        {
+          "pssm": 176231,
+          "accession": "cd08270",
+          "name": "MDR4",
+          "length": 305,
+          "bitscore": 268.471,
+          "superfamily": "cl16912",
+          "label": "MDR4 [cd08270]",
+          "value": "MDR4"
+        },
+        {
+          "pssm": 176645,
+          "accession": "cd05282",
+          "name": "ETR_like",
+          "length": 323,
+          "bitscore": 224.079,
+          "superfamily": "cl16912",
+          "label": "ETR_like [cd05282]",
+          "value": "ETR_like"
+        },
+        {
+          "pssm": 388358,
+          "accession": "cl16912",
+          "name": "MDR",
+          "length": 0,
+          "label": "MDR [cl16912]",
+          "value": "MDR"
+        }
+      ]
+    },
+    {
+      "uuid": "cf65a970-03c9-4c90-9d6a-d6e394ed9c63",
+      "name": "DH",
+      "domains": [
+        {
+          "pssm": 379688,
+          "accession": "pfam14765",
+          "name": "PS-DH",
+          "length": 291,
+          "bitscore": 132.479,
+          "superfamily": "cl00509",
+          "label": "PS-DH [pfam14765]",
+          "value": "PS-DH"
+        },
+        {
+          "pssm": 214837,
+          "accession": "smart00826",
+          "name": "PKS_DH",
+          "length": 167,
+          "bitscore": 76.8814,
+          "superfamily": "cl00509",
+          "label": "PKS_DH [smart00826]",
+          "value": "PKS_DH"
+        }
+      ]
+    }
+  ],
+  "rules": [
+    {
+      "uuid": "98c29a5a-9d4a-47c1-b006-6a70419df5e1",
+      "name": "Hybrid PKS-NRPS",
+      "domains": [
+        "KS",
+        "A",
+        "C",
+        "ACP"
+      ],
+      "filters": [],
+      "renames": [
+        {
+          "uuid": "01eb7549-0576-4ebd-a8e3-26e5d3ed43b3",
+          "from": "ACP",
+          "after": [
+            "A",
+            "C"
+          ],
+          "to": "T"
+        }
+      ],
+      "evaluator": "0 and (1 or 2)",
+      "parent": null
+    },
+    {
+      "uuid": "da9b6691-1146-402e-accb-52a5d8739322",
+      "name": "Thiolase",
+      "domains": [
+        "KS"
+      ],
+      "filters": [
+        {
+          "uuid": "7a3d6592-d806-4423-8afd-3dc5b1b6a86f",
+          "type": "KS",
+          "domains": [
+            "cd00829",
+            "cd00751",
+            "PLN02287"
+          ]
+        }
+      ],
+      "renames": [],
+      "evaluator": "0",
+      "parent": null
+    },
+    {
+      "uuid": "e5bac931-de73-4a05-9537-26cf1ff2535c",
+      "name": "HMG-CoA synthase",
+      "domains": [
+        "KS"
+      ],
+      "filters": [
+        {
+          "uuid": "0d999723-efd1-4133-a458-52c4df1b2404",
+          "type": "KS",
+          "domains": [
+            "TIGR01833"
+          ]
+        }
+      ],
+      "renames": [],
+      "evaluator": "0",
+      "parent": null
+    },
+    {
+      "uuid": "15b7d7e6-d445-43d2-bf42-457d31dbe790",
+      "name": "beta subunit",
+      "domains": [
+        "AT",
+        "ER",
+        "DH"
+      ],
+      "filters": [
+        {
+          "uuid": "84b4f7e4-8390-4983-8e72-48a7aad380f2",
+          "type": "ER",
+          "domains": [
+            "COG4981"
+          ]
+        }
+      ],
+      "renames": [],
+      "evaluator": "0 and 1 and 2",
+      "parent": "d09eff03-8279-4f5b-9e27-493b3728802e"
+    },
+    {
+      "uuid": "6936290a-5a67-4e24-bc8c-d9642a8f7366",
+      "name": "alpha subunit",
+      "domains": [
+        "AT",
+        "KR",
+        "ACPS"
+      ],
+      "filters": [
+        {
+          "uuid": "12e2babf-9d82-48d8-bccc-39f8e2bca76f",
+          "type": "KR",
+          "domains": [
+            "cd08950"
+          ]
+        }
+      ],
+      "renames": [],
+      "evaluator": "0 and 1 and 2",
+      "parent": "d09eff03-8279-4f5b-9e27-493b3728802e"
+    },
+    {
+      "uuid": "d09eff03-8279-4f5b-9e27-493b3728802e",
+      "name": "FAS",
+      "domains": [
+        "KS"
+      ],
+      "filters": [
+        {
+          "uuid": "498cc841-8e5a-4e37-9644-6cfcbff99556",
+          "type": "KS",
+          "domains": [
+            "COG0304",
+            "cd00834",
+            "cd00830",
+            "TIGR03150"
+          ]
+        }
+      ],
+      "renames": [],
+      "evaluator": "0",
+      "parent": null
+    },
+    {
+      "uuid": "bef04130-41ab-4b06-b9f2-8e8201fd74bf",
+      "name": "NRPS-like",
+      "domains": [
+        "A",
+        "C",
+        "ACP"
+      ],
+      "filters": [],
+      "renames": [
+        {
+          "uuid": "b6d0b1b1-679e-4544-8545-8f4f5257e3f1",
+          "from": "ACP",
+          "after": [],
+          "to": "T"
+        }
+      ],
+      "evaluator": "0 or 1",
+      "parent": null
+    },
+    {
+      "uuid": "6995bebf-1c08-4240-8648-740fcbdec4c9",
+      "name": "NRPS",
+      "domains": [
+        "A",
+        "ACP",
+        "C"
+      ],
+      "filters": [],
+      "renames": [
+        {
+          "uuid": "0cb30f4b-311a-4ff5-bc0a-e58be9a80ce5",
+          "from": "ACP",
+          "after": [],
+          "to": "T"
+        }
+      ],
+      "evaluator": "0 and 2",
+      "parent": null
+    },
+    {
+      "uuid": "803ca192-5e02-46c2-ac85-65780e0f0a13",
+      "name": "Type III",
+      "domains": [
+        "KS"
+      ],
+      "filters": [
+        {
+          "uuid": "4a677a35-cd2c-41f5-95ae-d2ff28d89a7e",
+          "type": "KS",
+          "domains": [
+            "cd00831"
+          ]
+        }
+      ],
+      "renames": [],
+      "evaluator": "0",
+      "parent": "f99ce641-3b03-4bac-9936-33950b79e83c"
+    },
+    {
+      "uuid": "bdd7b3e5-2fa5-452e-9601-b9670c7daf34",
+      "name": "Non-reducing",
+      "domains": [
+        "SAT",
+        "PT"
+      ],
+      "filters": [],
+      "renames": [],
+      "evaluator": "0 and 1",
+      "parent": "7e0d35f7-933a-46af-8257-03d721383b0b"
+    },
+    {
+      "uuid": "7fab883b-f441-442e-8848-eead9c8e6670",
+      "name": "Partially-reducing",
+      "domains": [
+        "DH",
+        "ER",
+        "KR"
+      ],
+      "filters": [
+        {
+          "uuid": "d2cf1049-de8f-45a8-815f-9dd37b9f2604",
+          "type": "KR",
+          "domains": [
+            "smart00822",
+            "cl00100"
+          ]
+        },
+        {
+          "uuid": "ff41f806-e787-4644-a55d-02dc67471192",
+          "type": "ER",
+          "domains": [
+            "smart00829",
+            "cd05195"
+          ]
+        },
+        {
+          "uuid": "81b7db01-33d4-4583-83e2-03aef6c85f2b",
+          "type": "DH",
+          "domains": [
+            "smart00826"
+          ]
+        }
+      ],
+      "renames": [],
+      "evaluator": "0 or 1 or 2",
+      "parent": "7e0d35f7-933a-46af-8257-03d721383b0b"
+    },
+    {
+      "uuid": "70d18b0f-0158-4aef-945e-272912114c51",
+      "name": "Highly-reducing",
+      "domains": [
+        "DH",
+        "ER",
+        "KR"
+      ],
+      "filters": [
+        {
+          "uuid": "e1f8d23d-00dc-4cb8-8615-d5dcc0b0b60a",
+          "type": "KR",
+          "domains": [
+            "smart00822",
+            "cl00100"
+          ]
+        },
+        {
+          "uuid": "507532f6-f88e-4ffd-a207-2a5ba0dae075",
+          "type": "ER",
+          "domains": [
+            "smart00829",
+            "cd05195"
+          ]
+        },
+        {
+          "uuid": "67408b61-8279-44c6-b491-2068001003ba",
+          "type": "DH",
+          "domains": [
+            "smart00826"
+          ]
+        }
+      ],
+      "renames": [],
+      "evaluator": "0 and 1 and 2",
+      "parent": "7e0d35f7-933a-46af-8257-03d721383b0b"
+    },
+    {
+      "uuid": "7e0d35f7-933a-46af-8257-03d721383b0b",
+      "name": "Type I",
+      "domains": [
+        "AT"
+      ],
+      "filters": [
+        {
+          "uuid": "3d27bd1f-3e8a-4ff2-8d5c-e12cd0d224aa",
+          "type": "AT",
+          "domains": [
+            "smart00827",
+            "cl08282"
+          ]
+        }
+      ],
+      "renames": [],
+      "evaluator": "0",
+      "parent": "f99ce641-3b03-4bac-9936-33950b79e83c"
+    },
+    {
+      "uuid": "ffefe1ca-e1d6-467e-874c-6b4a67f51b28",
+      "name": "Multi-modular PKS",
+      "domains": [
+        "KS", "KS"
+      ],
+      "filters": [],
+      "renames": [],
+      "evaluator": "0 and 1",
+      "parent": "f99ce641-3b03-4bac-9936-33950b79e83c"
+    },
+    {
+      "uuid": "f99ce641-3b03-4bac-9936-33950b79e83c",
+      "name": "PKS",
+      "domains": [
+        "KS"
+      ],
+      "filters": [
+        {
+          "uuid": "55f03eae-701f-4ae7-bd0a-8ac8d6d18748",
+          "type": "KS",
+          "domains": [
+            "smart00825",
+            "cd00833",
+            "cd00831"
+          ]
+        }
+      ],
+      "renames": [],
+      "evaluator": "0",
+      "parent": null
+    }
+  ],
+  "hierarchy": [
+    {
+      "key": "98c29a5a-9d4a-47c1-b006-6a70419df5e1",
+      "title": "Hybrid PKS-NRPS",
+      "children": []
+    },  
+    {
+      "key": "6995bebf-1c08-4240-8648-740fcbdec4c9",
+      "title": "NRPS",
+      "children": []
+    },
+    {
+      "key": "bef04130-41ab-4b06-b9f2-8e8201fd74bf",
+      "title": "NRPS-like",
+      "children": []
+    },
+    {
+      "key": "d09eff03-8279-4f5b-9e27-493b3728802e",
+      "title": "FAS",
+      "children": [
+        {
+        "key": "6936290a-5a67-4e24-bc8c-d9642a8f7366",
+        "title": "alpha subunit",
+        "children": []
+        },
+        {
+        "key": "15b7d7e6-d445-43d2-bf42-457d31dbe790",
+        "title": "beta subunit",
+        "children": []
+        }
+      ]
+    },
+    {
+      "key": "e5bac931-de73-4a05-9537-26cf1ff2535c",
+      "title": "HMG-CoA synthase",
+      "children": []
+    },
+    {
+      "key": "da9b6691-1146-402e-accb-52a5d8739322",
+      "title": "Thiolase",
+      "children": []
+    },
+    {
+      "key": "f99ce641-3b03-4bac-9936-33950b79e83c",
+      "title": "PKS",
+      "children": [
+        {
+            "key": "ffefe1ca-e1d6-467e-874c-6b4a67f51b28",
+            "title": "Multi-modular PKS",
+            "children": []
+        },
+        {
+            "key": "7e0d35f7-933a-46af-8257-03d721383b0b",
+            "title": "Type I",
+            "children": [
+                {
+                    "key": "70d18b0f-0158-4aef-945e-272912114c51",
+                    "title": "Highly-reducing",
+                    "children": []
+                },
+                {
+                    "key": "7fab883b-f441-442e-8848-eead9c8e6670",
+                    "title": "Partially-reducing",
+                    "children": []
+                },
+                {
+                    "key": "bdd7b3e5-2fa5-452e-9601-b9670c7daf34",
+                    "title": "Non-reducing",
+                    "children": []
+                }
+            ]
+        },
+        {
+            "key": "803ca192-5e02-46c2-ac85-65780e0f0a13",
+            "title": "Type III",
+            "children": []
+        }
+      ]
+    }
+  ]
 }
