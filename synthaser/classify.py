@@ -9,11 +9,26 @@ LOG = logging.getLogger(__name__)
 
 
 def traverse_graph(graph, rules, domains, classifiers=None):
-    """Traverses a rule graph and classifies a domain collection.
+    """Traverses a rule graph and classifies a collection of domains.
 
-    Terminals are lists of rules without children. So, on a terminal,
-    test each rule, breaking on (and saving) the first satisfied.
-    Otherwise, test the current node and traverse its children.
+    Each node is a dictionary with the schema:
+
+        {
+            "title": "Rule name",
+            "children": [
+                {
+                    "title": Rule name",
+                    "children": [ ... ],
+                },
+                ...
+            ]
+        }
+
+    Rules are evaluated in order. If a rule is successfully evaluated,
+    this function will recurse into any child rules, if any exist.
+
+    Finally a classification list, containing the path of rules satisfied
+    by the given domains, is returned.
 
     Args:
         graph (list, dict): Rule graph to traverse.
@@ -25,26 +40,17 @@ def traverse_graph(graph, rules, domains, classifiers=None):
     """
     if not classifiers:
         classifiers = []
-
-    if isinstance(graph, list):
-        for node in graph:
-            if isinstance(node, dict):
-                classifiers = traverse_graph(node, rules, domains, classifiers)
-                if classifiers:
-                    break
-            else:
-                if rules[node].satisfied_by(domains):
-                    rules[node].rename_domains(domains)
-                    classifiers.append(node)
-                    break
-    else:
-        for node, children in graph.items():
-            if rules[node].satisfied_by(domains):
-                rules[node].rename_domains(domains)
-                classifiers.append(node)
-                classifiers = traverse_graph(children, rules, domains, classifiers)
-                break
-    return classifiers
+    for node in graph:
+        title = node["title"]
+        rule = rules[title]
+        if not rule.satisfied_by(domains):
+            continue
+        rule.rename_domains(domains)
+        classifiers.append(title)
+        children = node.get("children")
+        if children:
+            classifiers = traverse_graph(children, rules, domains, classifiers)
+        return classifiers
 
 
 class RuleGraph(Serialiser):
@@ -88,7 +94,7 @@ class RuleGraph(Serialiser):
     def from_dict(cls, d):
         return cls(
             rules={rule["name"]: Rule(**rule) for rule in d["rules"]},
-            graph=d["graph"]
+            graph=d["hierarchy"]
         )
 
     def to_dict(self):
@@ -111,17 +117,25 @@ class Rule:
         evaluator (str): Evaluatable rule satisfaction statement.
     """
 
-    def __init__(self, name=None, rename=None, domains=None, filters=None, evaluator=None):
+    def __init__(
+        self,
+        name=None,
+        renames=None,
+        domains=None,
+        filters=None,
+        evaluator=None,
+        **kwargs
+    ):
         self.name = name if name else ""
-        self.rename = rename if rename else {}
+        self.renames = renames if renames else []
         self.domains = domains if domains else []
-        self.filters = filters if filters else {}
+        self.filters = filters if filters else []
         self.evaluator = evaluator if evaluator else ""
 
     def to_dict(self):
         return {
             "name": self.name,
-            "rename": self.rename,
+            "renames": self.renames,
             "domains": self.domains,
             "filters": self.filters,
             "evaluator": self.evaluator
@@ -156,20 +170,15 @@ class Rule:
         be named T, not ACP. So, its rule is {'after': ['A', 'C'], 'to': 'T'};
         any ACP domains after the first A or C will be renamed T.
         """
-        if not self.rename:
+        if not self.renames:
             return
-        for key, value in self.rename.items():
-            if isinstance(value, dict):
-                flag = False
-                for domain in domains:
-                    if not flag and domain.type in value["after"]:
-                        flag = True
-                    if flag and domain.type == key:
-                        domain.type = value["to"]
-            else:
-                for domain in domains:
-                    if domain.type == key:
-                        domain.type = value
+        for rename in self.renames:
+            flag = False
+            for domain in domains:
+                if not flag and domain.type in rename["after"]:
+                    flag = True
+                if flag and domain.type == rename["to"]:
+                    domain.type = rename["to"]
 
     def valid_family(self, domain):
         """Checks a given domain matches a specified CDD family in the rule.
@@ -182,13 +191,14 @@ class Rule:
 
         ::
 
-            "filters": {
-                "KS": ["PKS_KS", "PKS", "CHS_like"],
-                ...
-            }
+            "filters": [
+                "type": "KS",
+                "domains": ["one", "two"]
+            ]
         """
-        if domain.type in self.filters:
-            return domain.domain in self.filters[domain.type]
+        for filt in self.filters:
+            if filt["type"] == domain.type:
+                return domain.accession in filt["domains"]
         return True
 
     def satisfied_by(self, domains):

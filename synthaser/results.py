@@ -15,19 +15,48 @@ LOG = logging.getLogger(__name__)
 DOMAINS = {}
 
 
-def load_domain_json(json_file):
+def load_rules_json(json_file):
     with open(json_file) as fp:
-        rules = json.load(fp)
-        update_domains(rules)
+        return json.load(fp)
 
 
-def update_domains(new):
+def load_domains(rule_file):
+    """Loads domains from a synthaser rule file.
+
+    Rule file domain schema:
+    {
+        'name': KS,
+        'domains': [
+            {
+                'accession': 'smart00825',
+                'name': 'PKS_KS'
+                ...
+            },
+            ...
+        ],
+        ...
+    }
+
+    This function flattens the domain type array to create a
+    dictionary of domain families, so these can be easily looked up
+    directly from CD-Search rows.
+    """
+    rules = load_rules_json(rule_file)
+    domains = {
+        family["accession"]: {**family, "type": domain["name"]}
+        for domain in rules["domains"]
+        for family in domain["domains"]
+    }
+    update_domains(domains)
+
+
+def update_domains(domains):
     DOMAINS.clear()
-    DOMAINS.update(new)
+    DOMAINS.update(domains)
 
 
 # Load defaults, stored in synthaser/domains.json
-load_domain_json(settings.DOMAIN_FILE)
+load_domains(settings.RULE_FILE)
 
 
 def domain_from_row(row):

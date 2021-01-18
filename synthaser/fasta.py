@@ -64,7 +64,7 @@ def wrap(sequence, limit=80):
     Returns:
         (str): Sequence wrapped to maximum `limit` characters per line.
     """
-    return "\n".join(sequence[i : i + limit] for i in range(0, len(sequence), limit))
+    return "\n".join(sequence[i: i + limit] for i in range(0, len(sequence), limit))
 
 
 def create(header, sequence, limit=80):

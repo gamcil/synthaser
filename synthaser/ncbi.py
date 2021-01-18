@@ -30,7 +30,7 @@ SEARCH_PARAMS = {
 def launch(query):
     """Launches a new CDSearch run.
 
-    Parameters:
+    Arguments:
         query (Synthase, SynthaseContainer):
             Synthase objects to be searched. This could either be a single Synthase
             object or a SynthaseContainer; other objects could be used as long as they
@@ -74,7 +74,7 @@ def check(cdsid):
     return None. If an error is encountered, a ValueError will be thrown with the
     corresponding error code and message.
 
-    Parameters:
+    Arguments:
         cdsid (str): CD-search identifier (CDSID).
     Returns:
         (requests.models.Response):
@@ -92,7 +92,10 @@ def check(cdsid):
     response = requests.get(
         CDSEARCH_URL, params={"cdsid": cdsid, "dmode": "full", "tdata": "hits"}
     )
-    code = re.search(r"#status\t([012345])[\n\t]", response.text).group(1)
+    match = re.search(r"#status\s+([\d])", response.text)
+    if not match:
+        raise ValueError("Failed to read search status")
+    code = match.group(1)
     if code == "0":
         if response.text.endswith("Superfamily\n"):
             raise ValueError("Empty results file; perhaps invalid query?")
@@ -134,7 +137,7 @@ def retrieve(cdsid, max_retries=-1, delay=20):
     #status	0
     ...
 
-    Parameters:
+    Arguments:
         cdsid (str):
             CD-search job ID. Looks like ``QM3-qcdsearch-xxxxxxxxxxx-yyyyyyyyyyy``.
         output (file pointer):
@@ -188,7 +191,7 @@ def efetch_sequences(headers):
     FASTA will contain a full sequence description in the header line after the
     accession.
 
-    Parameters:
+    Arguments:
         headers (list): A collection of NCBI sequence identifiers (accession, GI, etc)
     Returns:
         sequences (dict): Sequences downloaded from NCBI
@@ -227,7 +230,7 @@ def set_search_params(
     All search parameters are stored in SEARCH_PARAMS; this can either be edited
     directly, or through this function, prior to a search.
 
-    Parameters:
+    Arguments:
         database (str):
             Name of search database. Available options are 'cdd' (default), 'pfam',
             'smart', 'tigrfam', 'cog' and 'kog'. Only applies when smode is live.
