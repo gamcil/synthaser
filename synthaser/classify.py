@@ -51,6 +51,7 @@ def traverse_graph(graph, rules, domains, classifiers=None):
         if children:
             classifiers = traverse_graph(children, rules, domains, classifiers)
         return classifiers
+    return classifiers
 
 
 class RuleGraph(Serialiser):

@@ -77,20 +77,17 @@ def check(cdsid):
     Arguments:
         cdsid (str): CD-search identifier (CDSID).
     Returns:
-        (requests.models.Response):
-            If the job has successfully completed (Response contains status code 0).
-            This is the object returned by requests.get(); if the search has
-            completed, this object will contain the search results in its text and
-            contents attributes.
-        (None): If the job is still running (Response contains status code 3).
+        True: If the job has completed and is ready for download
+        False: If the job is still running
     Raises:
         ValueError:
             If the returned results file has a successful status code but is actually
             empty (i.e. contains no results), perhaps due to an invalid query.
         ValueError: When a status code of 1, 2, 4 or 5 is returned from the request.
     """
-    response = requests.get(
-        CDSEARCH_URL, params={"cdsid": cdsid, "dmode": "full", "tdata": "hits"}
+    response = requests.post(
+        CDSEARCH_URL,
+        params={"cdsid": cdsid, "tdata": "hits"}
     )
     match = re.search(r"#status\s+([\d])", response.text)
     if not match:
@@ -99,9 +96,9 @@ def check(cdsid):
     if code == "0":
         if response.text.endswith("Superfamily\n"):
             raise ValueError("Empty results file; perhaps invalid query?")
-        return response
+        return True
     if code == "3":
-        return None
+        return False
     errors = {
         "1": "Invalid search ID",
         "2": "No effective input (usually no query proteins or search ID specified)",
@@ -109,6 +106,30 @@ def check(cdsid):
         "5": "Data is corrupted or no longer available (cache cleaned, etc)",
     }
     raise ValueError(f"Request failed; NCBI returned code {code} ({errors[code]})")
+
+
+def get_results(cdsid):
+    """Downloads results corresponding to a CDSID.
+
+    Arguments:
+        cdsid (str): CD-Search identifier
+    Returns:
+        requests.Response: Response object containing search results
+    Raises:
+        ValueError: If response has bad status code
+    """
+    params = {
+        "tdata": "hits",
+        "cddefl": "false",
+        "qdefl": "false",
+        "dmode": "full",
+        "clonly": "false",
+        "cdsid": cdsid,
+    }
+    response = requests.post(CDSEARCH_URL, params)
+    if not response.ok:
+        raise ValueError("Failed to retrieve results!")
+    return response
 
 
 def retrieve(cdsid, max_retries=-1, delay=20):
@@ -160,6 +181,7 @@ def retrieve(cdsid, max_retries=-1, delay=20):
     if delay < 10:
         raise ValueError("Delay must be at least 10s")
     retries, previous = 0, 0
+    finished = False
     while True:
         current = time.time()
         wait = previous + delay - current
@@ -169,17 +191,17 @@ def retrieve(cdsid, max_retries=-1, delay=20):
         else:
             previous = current
         LOG.info("Checking search status...")
-        response = check(cdsid)
-        if response:
+        finished = check(cdsid)
+        if finished:
             LOG.info("Search successfully completed!")
             break
         if max_retries > 0 and retries == max_retries:
             LOG.error("Maximum retry limit (%i) exceeded, breaking", max_retries)
             break
         retries += 1
-    if not response:
+    if not finished:
         raise ValueError("No results were returned")
-    return response
+    return get_results(cdsid)
 
 
 def efetch_sequences(headers):
