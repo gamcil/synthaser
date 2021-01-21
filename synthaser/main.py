@@ -9,10 +9,9 @@ from pathlib import Path
 
 from synthaser import (
     search,
-    rpsblast,
     models,
     parsers,
-    domains,
+    download,
 )
 from synthaser.plot import plot_synthases
 
@@ -98,7 +97,7 @@ def main():
     args = parsers.parse_args(sys.argv[1:])
 
     if args.command == "getdb":
-        rpsblast.getdb(args.database, args.folder)
+        download.getdb(args.database, args.folder)
 
     elif args.command == "getseq":
         container = search.prepare_input(query_ids=args.sequence_ids)
@@ -134,24 +133,6 @@ def main():
             classify_file=args.classify_file,
             results_file=args.results_file,
         )
-
-    elif args.command == "domains":
-        if args.subcommand == "convert":
-            domains.convert(args.domain_file, names=args.names, accessions=args.accessions)
-        elif args.subcommand == "update":
-            domains.update(
-                args.rule_file,
-                args.domain_file,
-                type=args.type,
-                families=args.families,
-                file=args.file,
-            )
-        elif args.subcommand == "remove":
-            domains.remove(args.rule_file, args.rules, args.families)
-        elif args.subcommand == "download":
-            domains.download(args.domain_file, folder=args.folder, indent=args.indent)
-        elif args.subcommand == "summary":
-            domains.summary(args.rule_file, args.rules, args.families)
 
     elif args.command == "extract":
         from synthaser import extract
