@@ -1,21 +1,33 @@
-import { RenameItem } from './Item'
+import React from 'react'
 
-export const RenameList = props => (
+import RenameItem from './Item'
+
+const RenameList = ({
+  renames,
+  options,
+  handleAdd,
+  handleChange,
+  handleRemove,
+}) => (
   <div>
     <div>
-      <button type="button" onClick={props.handleAdd}>Add</button>
+      <button type="button" onClick={handleAdd}>Add</button>
     </div>
     <ul>
-      {props.renames.map((rename, index) => (
+      {renames.map(rename => (
         <RenameItem
           key={rename.uuid}
-          data={rename}
-          rule={props.rule}
-          domains={props.domains}
-          handleChange={props.handleChange(index)}
-          handleRemove={props.handleRemove(index)}
+          from={rename.from}
+          before={rename.before}
+          after={rename.after}
+          to={rename.to}
+          options={options}
+          handleChange={handleChange(rename.uuid)}
+          handleRemove={handleRemove(rename.uuid)}
         />
       ))}
     </ul>
   </div>
 )
+
+export default React.memo(RenameList)

@@ -1,3 +1,4 @@
+import React, { useMemo, useCallback } from 'react'
 import Select from 'react-select'
 
 /**
@@ -10,35 +11,56 @@ import Select from 'react-select'
  *  @prop handleChange {Function} - fn for updating filter in rule
  *  @prop handleRemove {Function} - fn for removing filter from rule
  */
-export const FilterItem = props => {
+const FilterItem = ({
+  type,
+  domains,
+  allDomains,
+  typeOptions,
+  handleRemove,
+  handleChange,
+}) => {
   // Get the domain object corresponding to the selected type, if exists
-  const domain = props.domains.find(d => d.name === props.data.type)
-
-  // Generate type options based on domains in the rule
-  const typeOptions = props.rule.domains.map(d => ({ label: d, value: d }))
+  const domain = useMemo(
+    () => type ? allDomains.find(d => d.name === type) : null,
+    [type, allDomains]
+  )
 
   // Generate domain family options based on families in the selected type
-  const domainOptions = domain
-    ? domain.domains.map(d => ({ label: d.name, value: d.accession }))
-    : []
+  const domainOptions = useMemo(
+    () => domain
+      ? domain.domains.map(d => ({ label: d.name, value: d.accession }))
+      : [],
+    [domain]
+  )
 
-  const handleChangeName = event => {
-    props.handleChange([
+  const nameValue = useMemo(
+    () => domain ? {label: domain.name, value: domain.name} : null,
+    [domain]
+  )
+
+  const domainsValue = useMemo(
+    () => domains.map(d => domainOptions.find(o => o.value === d)),
+    [domains, domainOptions]
+  )
+
+  const handleChangeName = useCallback(event => {
+    handleChange([
       { target: { name: "domains", value: [] } },
       { target: { name: "type", value: event.value } },
     ])
-  }
-  const handleChangeDomains = event => {
-    props.handleChange([
+  }, [handleChange])
+
+  const handleChangeDomains = useCallback(event => {
+    handleChange([
       { target: { name: "domains", value: event ? event.map(d => d.value) : [] } }
     ])
-  }
+  }, [handleChange])
 
   return (
     <li>
       <button
         type="button"
-        onClick={props.handleRemove}
+        onClick={handleRemove}
       >
         Delete
       </button>
@@ -49,7 +71,7 @@ export const FilterItem = props => {
           className="select"
           options={typeOptions}
           onChange={handleChangeName}
-          value={domain ? {label: domain.name, value: domain.name} : null}
+          value={nameValue}
         />
       </div>
 
@@ -59,10 +81,12 @@ export const FilterItem = props => {
           className="select"
           options={domainOptions}
           onChange={handleChangeDomains}
-          value={props.data.domains.map(d => domainOptions.find(o => o.value === d))}
+          value={domainsValue}
           isMulti
         />
       </div>
     </li>
   )
 }
+
+export default React.memo(FilterItem)

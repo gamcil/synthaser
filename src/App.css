@@ -8,7 +8,7 @@ body {
   display: grid;
   padding: 1em;
   grid-gap: .5em;
-  grid-template-columns: 2fr 3fr 1.5fr;
+  grid-template-columns: 2fr 3fr 2fr;
   grid-template-rows: 90vh;
   background-color: #e0e0e0;
 }
@@ -41,6 +41,7 @@ li {
   padding: 1em;
   border: 1px solid black;
 	border-radius: 4px;
+  background-color: white;
 }
 
 li:first-child {
@@ -90,6 +91,10 @@ li:first-child {
 	box-sizing: content-box;
 }
 
+.btn-ex {
+  background-color: grey;
+}
+
 .btn-save {
 	background-color: blue;
 }
@@ -108,18 +113,8 @@ input[type="file"] {
 
 .rule-field {
 	display: flex;
-	flex-direction: row;
-	justify-content: space-between;
-	align-items: center;
+	flex-direction: column;
 	margin-top: 0.3em;
-}
-
-.rule-field input {
-	width: 50%;
-}
-
-.rule-field .select {
-	width: 50%;
 }
 
 p {

@@ -1,21 +1,43 @@
-import { FilterItem } from './Item'
+import React, { useMemo } from 'react'
 
-export const FilterList = props => (
-  <div>
+import FilterItem from './Item'
+
+const FilterList = ({
+  filters,
+  domains,
+  allDomains, 
+  handleAdd,
+  handleChange,
+  handleRemove,
+}) => {
+
+  const typeOptions = useMemo(
+    () => domains.map(d => ({ label: d, value: d })),
+    [domains]
+  )
+
+  const filterItems = filters.map(filter => (
+    <FilterItem
+      key={filter.uuid}
+      type={filter.type}
+      domains={filter.domains}
+      allDomains={allDomains}
+      typeOptions={typeOptions}
+      handleChange={handleChange(filter.uuid)}
+      handleRemove={handleRemove(filter.uuid)}
+    />
+  ))
+
+  return (
     <div>
-      <button type="button" onClick={props.handleAdd}>Add</button>
+      <div>
+        <button type="button" onClick={handleAdd}>Add</button>
+      </div>
+      <ul>
+        {filterItems}
+      </ul>
     </div>
-    <ul>
-      {props.filters.map((filter, index) => (
-        <FilterItem
-          key={filter.uuid}
-          data={filter}
-          rule={props.rule}
-          domains={props.domains}
-          handleChange={props.handleChange(index)}
-          handleRemove={props.handleRemove(index)}
-        />
-      ))}
-    </ul>
-  </div>
-)
+  )
+}
+
+export default React.memo(FilterList)

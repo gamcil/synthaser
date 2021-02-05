@@ -1,26 +1,53 @@
+import React, { useMemo } from 'react'
 import Select from 'react-select'
 
-export const RenameItem = props => {
 
-  // Get from domain options based on domains in the rule
-  const options = props.rule.domains.map(d => ({ label: d, value: d }))
+const RenameItem = ({
+  from,
+  before,
+  after,
+  to,
+  options,
+  handleChange,
+  handleRemove,
+}) => {
+
+  console.log(from, after, to, options.find(o => o.label === from))
 
   const handleChangeFrom = event => {
-    props.handleChange({
-      target: { name: "from", value: event.value }
+    handleChange({
+      target: { name: "from", value: event.innerValue }
     })
   }
   const handleChangeAfter = event => {
-    props.handleChange({
-      target: { name: "after", value: event ? event.map(e => e.value) : [] }
+    handleChange({
+      target: { name: "after", value: event ? event.map(e => e.innerValue) : [] }
     })
   }
+  const handleChangeBefore = event => {
+    handleChange({
+      target: { name: "before", value: event ? event.map(e => e.innerValue) : [] }
+    })
+  }
+
+  const nameValue = useMemo(
+    () => options ? options.find(o => o.label === from) : null,
+    [from, options]
+  )
+  const afterValue = useMemo(
+    () => options ? after.map(a => options.find(o => o.label === a)) : [],
+    [after, options]
+  )
+  const beforeValue = useMemo(
+    () => options ? before.map(b => options.find(o => o.label === b)) : [],
+    [before, options]
+  )
 
   return (
     <li>
       <button
         type="button"
-        onClick={props.handleRemove}
+        onClick={handleRemove}
       >
         Delete
       </button>
@@ -33,7 +60,20 @@ export const RenameItem = props => {
           className="select"
           onChange={handleChangeFrom}
           options={options}
-          value={options.find(o => o.label === props.data.from)}
+          value={nameValue}
+        />
+      </div>
+
+      {/* Change domain name when occuring before these domains */}
+      <div className="rule-field">
+        <label htmlFor="renameBefore">Before domains:</label>
+        <Select
+          id="renameBefore"
+          className="select"
+          options={options}
+          onChange={handleChangeBefore}
+          value={beforeValue}
+          isMulti
         />
       </div>
 
@@ -45,7 +85,7 @@ export const RenameItem = props => {
           className="select"
           options={options}
           onChange={handleChangeAfter}
-          value={props.data.after.map(a => options.find(o => o.label === a))}
+          value={afterValue}
           isMulti
         />
       </div>
@@ -57,10 +97,12 @@ export const RenameItem = props => {
           id="filterTo"
           type="text"
           name="to"
-          value={props.data.to}
-          onChange={props.handleChange}
+          value={to}
+          onChange={handleChange}
         />
       </div>
     </li>
   )
 }
+
+export default React.memo(RenameItem)

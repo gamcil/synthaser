@@ -1,29 +1,51 @@
+import { useMemo } from 'react'
+import React from 'react'
 import Select from 'react-select'
 
-import { FilterList } from './filter/List'
-import { RenameList } from './rename/List'
+import FilterList from './filter/List'
+import RenameList from './rename/List'
 
 import { v4 as uuidv4 } from 'uuid'
 
-export const RuleItem = props => {
 
-  const handleUpdateRule = (label, value) => {
-    props.handleChange({
-      target: { name: label, value : value }
-    })
+const RuleItem = ({
+  name,
+  domains,
+  allDomains,
+  evaluator,
+  filters,
+  renames,
+  handleRemove,
+  handleChange,
+  handleUpdate,
+  domainOptions,
+}) => {
+
+  const selectedDomains = useMemo(
+    () => domains
+      .map(d => ({
+        label: d,
+        innerValue: d,
+        value: Math.random()
+      })),
+    [domains]
+  )
+
+  const handleChangeDomains = event => {
+    handleUpdate("domains", event ? event.map(e => e.label) : [])
   }
 
   const handleAddFilter = () => {
-    handleUpdateRule(
+    handleUpdate(
       "filters",
-      [{ uuid: uuidv4(), type: "", domains: [] }, ...props.data.filters]
+      [{ uuid: uuidv4(), type: "", domains: [] }, ...filters]
     )
   }
-  const handleChangeFilter = idx => events => {
-    handleUpdateRule(
+  const handleChangeFilter = uuid => events => {
+    handleUpdate(
       "filters",
-      props.data.filters.map((filter, _idx) => {
-        if (_idx !== idx) return filter
+      filters.map(filter => {
+        if (filter.uuid !== uuid) return filter
         const data = { ...filter }
         events.forEach(event => {
           data[event.target.name] = event.target.value
@@ -32,69 +54,58 @@ export const RuleItem = props => {
       })
     )
   }
-  const handleRemoveFilter = idx => () => {
-    handleUpdateRule(
+  const handleRemoveFilter = uuid => () => {
+    handleUpdate(
       "filters",
-      props.data.filters.filter((_, _idx) => _idx !== idx)
+      filters.filter(filter => filter.uuid !== uuid)
     )
   }
 
   const handleAddRename = () => {
-    handleUpdateRule(
+    handleUpdate(
       "renames",
-      [{ uuid: uuidv4(), "from": "", "after": [], "to": "" }, ...props.data.renames]
+      [{
+        uuid: uuidv4(),
+        "from": "",
+        "before": [],
+        "after": [],
+        "to": ""
+      }, ...renames]
     )
   }
-  const handleChangeRename = idx => event => {
-    handleUpdateRule(
+  const handleChangeRename = uuid => event => {
+    handleUpdate(
       "renames",
-      props.data.renames.map((rename, _idx) => {
-        if (_idx !== idx) return rename
+      renames.map(rename => {
+        if (rename.uuid !== uuid) return rename
         return { ...rename, [event.target.name]: event.target.value}
       })
     )
   }
-  const handleRemoveRename = idx => () => {
-    handleUpdateRule(
+  const handleRemoveRename = uuid => () => {
+    handleUpdate(
       "renames",
-      props.data.renames.filter((_, _idx) => _idx !== idx)
+      renames.filter(rename => rename.uuid !== uuid)
     )
   }
-
-  const domainOptions = props.domains.map(domain => ({
-    label: domain.name,
-    value: domain.name
-  }))
-  const handleChangeDomains = event => props.handleChange({
-    target: {
-      name: "domains",
-      value: event ? event.map(e => e.value) : []
-    }
-  })
-
-  const ruleOptions = props.rules
-    .filter(rule => rule.uuid !== props.data.uuid)
-    .map(rule => ({ label: rule.name, value: rule.uuid }))
-  const handleChangeParent = event => props.handleChange({
-    target: { name: "parent", value: event.value }
-  })
 
   return (
     <li>
       <button
         type="button"
-        onClick={props.handleRemove}
+        onClick={handleRemove}
       >
         Delete
       </button>
+
       <div className="rule-field">
         <label htmlFor="ruleName">Name:</label>
         <input
           id="ruleName"
           type="text"
           name="name"
-          value={props.data.name}
-          onChange={props.handleChange}
+          value={name}
+          onChange={handleChange}
         />
       </div>
 
@@ -105,7 +116,8 @@ export const RuleItem = props => {
           options={domainOptions}
           onChange={handleChangeDomains}
           className="select"
-          value={props.data.domains.map(d => domainOptions.find(o => o.label === d))}
+          value={selectedDomains}
+          hideSelectedOptions={false}
           isMulti
         />
       </div>
@@ -116,29 +128,17 @@ export const RuleItem = props => {
           id="ruleEvaluator"
           type="text"
           name="evaluator"
-          value={props.data.evaluator}
-          onChange={props.handleChange}
-        />
-      </div>
-
-      <div className="rule-field">
-        <label htmlFor="ruleParent">Parent rule:</label>
-        <Select
-          id="ruleParent"
-          name="parent"
-          className="select"
-          options={ruleOptions}
-          onChange={handleChangeParent}
-          value={ruleOptions.find(o => o.label === props.data.parent)}
+          value={evaluator}
+          onChange={handleChange}
         />
       </div>
 
       <label htmlFor="ruleFilters">Domain filters:</label>
       <FilterList
         id="ruleFilters"
-        rule={props.data}
-        filters={props.data.filters}
-        domains={props.domains}
+        filters={filters}
+        domains={domains}
+        allDomains={allDomains}
         handleAdd={handleAddFilter}
         handleRemove={handleRemoveFilter}
         handleChange={handleChangeFilter}
@@ -147,13 +147,16 @@ export const RuleItem = props => {
       <label htmlFor="ruleRename">Rename domains:</label>
       <RenameList
         id="ruleRename"
-        rule={props.data}
-        renames={props.data.renames}
-        domains={props.domains}
+        renames={renames}
+        domains={domains}
+        options={selectedDomains}
         handleAdd={handleAddRename}
         handleRemove={handleRemoveRename}
         handleChange={handleChangeRename}
+        domainOptions={domainOptions}
       />
     </li>
   )
 }
+
+export default React.memo(RuleItem)
