@@ -724,7 +724,8 @@ const rules = {
         "KS",
         "A",
         "C",
-        "ACP"
+        "ACP",
+        "TR"
       ],
       "filters": [],
       "renames": [
@@ -891,7 +892,8 @@ const rules = {
       "domains": [
         "A",
         "ACP",
-        "C"
+        "C",
+        "TR"
       ],
       "filters": [],
       "renames": [
