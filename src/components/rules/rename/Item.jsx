@@ -12,8 +12,6 @@ const RenameItem = ({
   handleRemove,
 }) => {
 
-  console.log(from, after, to, options.find(o => o.label === from))
-
   const handleChangeFrom = event => {
     handleChange({
       target: { name: "from", value: event.innerValue }

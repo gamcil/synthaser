@@ -3,7 +3,7 @@ import React, { useMemo } from 'react'
 import RuleItem from './Item'
 
 
-export const RuleList = ({
+const RuleList = ({
   domains,
   rules,
   handleAdd,
@@ -56,3 +56,5 @@ export const RuleList = ({
     </div>
   )
 }
+
+export default RuleList

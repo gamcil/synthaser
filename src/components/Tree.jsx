@@ -12,7 +12,7 @@ const Tree = props => (
   </ul>
 )
 
-export const RuleTree = props => {
+const RuleTree = props => {
   return (
     <SortableTree
       treeData={props.rules}
@@ -21,3 +21,5 @@ export const RuleTree = props => {
     />
   )
 }
+
+export default RuleTree

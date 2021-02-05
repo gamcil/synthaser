@@ -1,6 +1,6 @@
 import { DomainItem } from './Item'
 
-export const DomainList = props => (
+const DomainList = props => (
   <div>
     <div>
       <button type="button" onClick={props.handleAdd}>Add</button>
@@ -19,3 +19,5 @@ export const DomainList = props => (
     </ul>
   </div>
 )
+
+export default DomainList

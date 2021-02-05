@@ -1,10 +1,12 @@
 import { useState } from 'react'
-import { DomainList } from './domains/List'
-import { RuleList } from './rules/List'
-import { RuleTree } from './Tree'
 import { v4 as uuidv4 } from 'uuid'
 import { find, removeNode, changeNodeAtPath } from 'react-sortable-tree'
-import defaultRules from '../rules.js'
+
+import DomainList from './domains/List'
+import RuleList from './rules/List'
+import RuleTree from './Tree'
+
+import defaultRules from "../rules.js"
 
 /**
  * Creates new Blob object containing serialised ruleset.
