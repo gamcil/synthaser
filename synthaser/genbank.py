@@ -2,70 +2,44 @@
 
 import logging
 
-from g2j import genbank
+from pathlib import Path
+
+from Bio import SeqIO
 
 
 LOG = logging.getLogger(__name__)
 
 
-def fasta(features):
-    """Builds a FASTA string from g2j Feature objects."""
-    return "\n".join(
-        ">{}\n{}".format(
-            f.qualifiers.get("locus_tag")
-            or f.qualifiers.get("protein_id"),
-            f.qualifiers.get("translation")
-        )
-        for f in features
-    )
-
-
-def feature_is_NRPS_PKS(feature):
+def get_feature_type(feature):
     """Tests if an antiSMASH feature is a NRPS or PKS.
 
     Looks for a /NRPS_PKS="type:..." field containing either 'PKS' or 'NRPS'.
     This function returns True if a matching qualifier is found.
     """
-    if "NRPS_PKS" not in feature.qualifiers:
-        return False
-    return any(
-        "PKS" in value or "NRPS" in value
-        for value in feature.qualifiers["NRPS_PKS"]
-        if value.startswith("type:")
-    )
+    try:
+        for value in feature.qualifiers["NRPS_PKS"]:
+            if not value.startswith("type:"):
+                continue
+            if "PKS" in value:
+                return "PKS"
+            if "NRPS" in value:
+                return "NRPS"
+    except KeyError:
+        return None
 
 
-def parse(handle, antismash=False):
-    """Parses a GenBank file handle for sequence features.
-
-    If antismash is True, any features not containing a /NRPS_PKS="type:"
-    field containing 'PKS' or 'NRPS' is discarded.
-    """
-    organism = genbank.parse(
-        handle,
-        feature_types=["CDS"],
-        save_scaffold_sequence=False
-    )
-
-    features = [
-        feature
-        for scaffold in organism.scaffolds
-        for feature in scaffold.features
-    ]
-
-    if antismash:
-        # Filter out any non-PKS/NRPS in an antiSMASH file
-        LOG.info("antiSMASH file specified; finding PKS/NRPS")
-        features = [
-            feature
-            for feature in features
-            if feature_is_NRPS_PKS(feature)
-        ]
-
-    return features
+def get_NRPS_PKS(features):
+    pks, nrps = [], []
+    for feature in features:
+        ftype = get_feature_type(feature)
+        if ftype == "PKS":
+            pks.append(feature)
+        elif ftype == "NRPS":
+            nrps.append(ftype)
+    return pks, nrps
 
 
-def convert(path, output=None, antismash=False):
+def convert(path, antismash=False):
     """Convert a GenBank file to FASTA.
 
     Arguments:
@@ -76,14 +50,22 @@ def convert(path, output=None, antismash=False):
         records (list): genome2json Feature objects of parsed records
     """
     LOG.info("Parsing GenBank file: %s", path)
-    with open(path) as fp:
-        records = parse(fp, antismash=antismash)
 
-    result = fasta(records)
+    path = Path(path)
 
-    if output:
-        LOG.info("Writing FASTA file: %s", output)
-        with open(output, "w") as fp:
-            fp.write(result)
+    with path.open() as fp:
+        features = [record for record in SeqIO.parse(fp, "genbank-cds")]
 
-    return result
+    if antismash:
+        LOG.info("Finding antiSMASH PKS and NRPS features")
+        pks, nrps = get_PKS_NRPS(features)
+        for fts, text in [(pks, 'pks'), (nrps, 'nrps')]:
+            with path.with_name(f"{path.name}_{text}.fa").open("w") as fp:
+                LOG.info("Writing %s: %s", text.upper(), fp.name)
+                SeqIO.write(fts, fp, "fasta")
+    else:
+        with path.with_suffix(".fa").open("w") as fp:
+            LOG.info("Writing FASTA: %s", fp.name)
+            SeqIO.write(features, fp, "fasta")
+
+    return features
