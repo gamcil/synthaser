@@ -6,6 +6,8 @@ import re
 
 import requests
 
+from Bio import Entrez, SeqIO
+
 from synthaser import fasta
 
 LOG = logging.getLogger(__name__)
@@ -218,25 +220,22 @@ def efetch_sequences(headers):
     Returns:
         sequences (dict): Sequences downloaded from NCBI
     """
-    response = requests.post(
-        EFETCH_URL,
-        params={"db": "protein", "rettype": "fasta"},
-        files={"id": ",".join(headers)},
-    )
-    if response.status_code != 200:
-        raise requests.HTTPError(
-            f"Error fetching sequences from NCBI [code {response.status_code}]."
-            " Bad query IDs?"
+    try:
+        handle = Entrez.efetch(
+            db="protein",
+            id=headers,
+            rettype="fasta",
+            retmode="text",
         )
-    sequences = {}
-    for key, value in fasta.parse(response.text.split("\n")).items():
-        for header in headers:
-            if header not in sequences and header in key:
-                sequences[header] = value
-                break
-    return sequences
+    except IOError:
+        LOG.exception("Failed to fetch sequences")
+        raise
+    return {
+        record.name: str(record.seq)
+        for record in SeqIO.parse(handle, 'fasta')
+    }
 
-
+    
 def set_search_params(
     database=None,
     smode=None,
