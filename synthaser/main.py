@@ -107,7 +107,6 @@ def main():
         from synthaser import genbank
         genbank.convert(
             args.genbank,
-            output=args.output,
             antismash=args.antismash
         )
 
