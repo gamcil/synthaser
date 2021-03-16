@@ -259,7 +259,6 @@ def add_genbank_subparser(subparsers):
         " use the --antismash option."
     )
     parser.add_argument("genbank", help="GenBank file")
-    parser.add_argument("output", help="Output file name")
     parser.add_argument(
         "--antismash",
         action="store_true",
