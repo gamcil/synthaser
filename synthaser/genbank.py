@@ -1,6 +1,7 @@
 """Extract CDS sequences from GenBank files for synthaser analysis."""
 
 import logging
+import re
 
 from pathlib import Path
 
@@ -17,15 +18,17 @@ def get_feature_type(feature):
     This function returns True if a matching qualifier is found.
     """
     try:
-        for value in feature.qualifiers["NRPS_PKS"]:
-            if not value.startswith("type:"):
-                continue
-            if "PKS" in value:
-                return "PKS"
-            if "NRPS" in value:
-                return "NRPS"
-    except KeyError:
+        ftype = re.search(
+            r"type: ([A-Za-z-_\s]+?)$",
+            feature.annotations["NRPS_PKS"],
+            re.MULTILINE
+        ).group(1)
+    except (KeyError, IndexError, AttributeError):
         return None
+    if "PKS" in ftype:
+        return "PKS"
+    if "NRPS" in ftype:
+        return "NRPS"
 
 
 def get_NRPS_PKS(features):
@@ -39,33 +42,39 @@ def get_NRPS_PKS(features):
     return pks, nrps
 
 
+def write(path, features):
+    with open(path, "w") as fp:
+        LOG.info("Writing %i feature(s) to file: %s", len(features), fp.name)
+        SeqIO.write(features, fp, "fasta")
+
+
 def convert(path, antismash=False):
-    """Convert a GenBank file to FASTA.
+    """Extracts proteins from a GenBank file.
 
     Arguments:
         path (str): GenBank file path
-        output (str): Output file path
         antismash (bool): Only save PKS/NRPS sequences
-    Returns:
-        records (list): genome2json Feature objects of parsed records
     """
     LOG.info("Parsing GenBank file: %s", path)
 
     path = Path(path)
 
+    # Parse CDS features from the file
     with path.open() as fp:
         features = [record for record in SeqIO.parse(fp, "genbank-cds")]
 
+    # Blank out descriptions for clean FASTA headers
+    for feature in features:
+        feature.description = ""
+
+    # If antismash=True, look for PKS and NRPS sequences only
     if antismash:
         LOG.info("Finding antiSMASH PKS and NRPS features")
-        pks, nrps = get_PKS_NRPS(features)
+        pks, nrps = get_NRPS_PKS(features)
         for fts, text in [(pks, 'pks'), (nrps, 'nrps')]:
-            with path.with_name(f"{path.name}_{text}.fa").open("w") as fp:
-                LOG.info("Writing %s: %s", text.upper(), fp.name)
-                SeqIO.write(fts, fp, "fasta")
+            if not fts:
+                LOG.info("No %s features found, skipping", text.upper())
+                continue
+            write(path.with_name(f"{path.stem}_{text}.fa"), fts)
     else:
-        with path.with_suffix(".fa").open("w") as fp:
-            LOG.info("Writing FASTA: %s", fp.name)
-            SeqIO.write(features, fp, "fasta")
-
-    return features
+        write(path.with_suffix(".fa"), features)
