@@ -230,10 +230,7 @@ def efetch_sequences(headers):
     except IOError:
         LOG.exception("Failed to fetch sequences")
         raise
-    return {
-        record.name: str(record.seq)
-        for record in SeqIO.parse(handle, 'fasta')
-    }
+    return fasta.parse(handle)
 
     
 def set_search_params(

@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
 
+from Bio import SeqIO
+
 
 def count(fasta):
     """Counts sequences in an open FASTA file handle.
@@ -18,41 +20,6 @@ def count(fasta):
             count += 1
     fasta.seek(0)
     return count
-
-
-def parse(fasta):
-    """Parses an open FASTA file for sequences.
-
-    For example, given a FASTA file `fasta.faa` containing:
-
-    ::
-
-        >sequence
-        ACGTACGTACGT
-
-    This file can be parsed:
-
-    >>> with open('fasta.faa') as handle:
-    ...     parse_fasta(handle)
-    {"sequence": "ACGTACGTACGT"}
-
-    Parameters:
-        fasta (file pointer): Open FASTA file handle
-    Returns:
-        sequences (dict): Sequences in the FASTA file, keyed on sequence headers.
-    """
-    sequences = {}
-    for line in fasta:
-        try:
-            line = line.decode().strip()
-        except AttributeError:
-            line = line.strip()
-        if line.startswith(">"):
-            header = line[1:]
-            sequences[header] = ""
-        else:
-            sequences[header] += line
-    return sequences
 
 
 def wrap(sequence, limit=80):
@@ -87,3 +54,10 @@ def create(header, sequence, limit=80):
         (str): FASTA format string.
     """
     return ">{}\n{}".format(header, wrap(sequence, limit=limit))
+
+
+def parse(handle):
+    return {
+        record.name: str(record.seq)
+        for record in SeqIO.parse(handle, 'fasta')
+    }
