@@ -174,11 +174,15 @@ class Rule:
         if not self.renames:
             return
         for rename in self.renames:
+            befores = rename.get("before", [])
+            afters = rename.get("after", [])
             flag = False
             for domain in domains:
-                if not flag and domain.type in rename["after"]:
+                if not flag and domain.type in afters:
                     flag = True
-                if flag and domain.type == rename["to"]:
+                if flag and domain.type in befores:
+                    flag = False
+                if flag and domain.type == rename["from"]:
                     domain.type = rename["to"]
 
     def valid_family(self, domain):
