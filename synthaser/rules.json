@@ -173,14 +173,6 @@
           "superfamily": "cl08282",
           "label": "PKS_AT [smart00827]",
           "value": "PKS_AT"
-        },
-        {
-          "pssm": 385314,
-          "accession": "cl08282",
-          "name": "Acyl_transf_1",
-          "length": 0,
-          "label": "Acyl_transf_1 [cl08282]",
-          "value": "Acyl_transf_1"
         }
       ]
     },
@@ -323,6 +315,9 @@
     {
       "uuid": "4019b991-5bfe-4c5f-b8a4-6748110e5c0e",
       "name": "SAT",
+      "equivalent": [
+        "AT"
+      ],
       "domains": [
         {
           "pssm": 374347,
@@ -427,14 +422,14 @@
           "value": "AdoMet_MTases"
         },
         {
-          "pssm": 223574,
-          "accession": "COG0500",
-          "name": "SmtA",
-          "length": 257,
-          "bitscore": 28.7117,
-          "superfamily": "cl17173",
-          "label": "SmtA [COG0500]",
-          "value": "SmtA"
+          "pssm": 214839,
+          "accession": "smart00828",
+          "name": "PKS_MT",
+          "length": 224,
+          "bitscore": 133.695,
+          "superfamily": "smart00828",
+          "label": "PKS_MT [smart00828]",
+          "value": "PKS_MT"
         }
       ]
     },
@@ -561,14 +556,6 @@
           "value": "acpP"
         },
         {
-          "pssm": 385641,
-          "accession": "cl09936",
-          "name": "PP-binding",
-          "length": 0,
-          "label": "PP-binding [cl09936]",
-          "value": "PP-binding"
-        },
-        {
           "pssm": 373139,
           "accession": "pfam14573",
           "name": "PP-binding_2",
@@ -577,6 +564,16 @@
           "superfamily": "cl09936",
           "label": "PP-binding_2 [pfam14573]",
           "value": "PP-binding_2"
+        },
+        {
+          "pssm": 376348,
+          "accession": "pfam00550",
+          "name": "PP-binding",
+          "length": 67,
+          "bitscore": 29.814,
+          "superfamily": "cl09936",
+          "label": "PP-binding [pfam00550]",
+          "value": "PP-binding"
         }
       ]
     },
@@ -584,14 +581,6 @@
       "uuid": "5f1fd49d-f8a2-4f1a-a11a-e2257c3c5543",
       "name": "KR",
       "domains": [
-        {
-          "pssm": 350900,
-          "accession": "cl00100",
-          "name": "KR",
-          "length": 0,
-          "label": "KR [cl00100]",
-          "value": "KR"
-        },
         {
           "pssm": 214833,
           "accession": "smart00822",
@@ -667,14 +656,6 @@
           "superfamily": "cl16912",
           "label": "ETR_like [cd05282]",
           "value": "ETR_like"
-        },
-        {
-          "pssm": 388358,
-          "accession": "cl16912",
-          "name": "MDR",
-          "length": 0,
-          "label": "MDR [cl16912]",
-          "value": "MDR"
         }
       ]
     },
@@ -713,10 +694,33 @@
         "KS",
         "A",
         "C",
-        "ACP"
+        "ACP",
+        "TR"
       ],
       "filters": [],
       "renames": [
+        {
+          "uuid": "486de412-09a3-44d1-8cfc-575f00d22884",
+          "from": "TR",
+          "after": [
+            "A",
+            "C"
+          ],
+          "before": [],
+          "to": "R"
+        },
+        {
+          "uuid": "01eb7549-0576-4ebd-a8e3-26e5d3ed43b4",
+          "from": "TR",
+          "after": [
+            "KS"
+          ],
+          "before": [
+            "A",
+            "C"
+          ],
+          "to": "TR"
+        },
         {
           "uuid": "01eb7549-0576-4ebd-a8e3-26e5d3ed43b3",
           "from": "ACP",
@@ -724,7 +728,20 @@
             "A",
             "C"
           ],
+          "before": [],
           "to": "T"
+        },
+        {
+          "uuid": "01eb7549-0576-4ebd-a8e3-26e5d3ed43b5",
+          "from": "T",
+          "after": [
+            "KS"
+          ],
+          "before": [
+            "A",
+            "C"
+          ],
+          "to": "ACP"
         }
       ],
       "evaluator": "0 and (1 or 2)",
@@ -847,6 +864,7 @@
         {
           "uuid": "b6d0b1b1-679e-4544-8545-8f4f5257e3f1",
           "from": "ACP",
+          "before": [],
           "after": [],
           "to": "T"
         }
@@ -860,13 +878,22 @@
       "domains": [
         "A",
         "ACP",
-        "C"
+        "C",
+        "TR"
       ],
       "filters": [],
       "renames": [
         {
+          "uuid": "f370c3b4-a307-4129-9a54-f91e023e8350",
+          "from": "TR",
+          "before": [],
+          "after": [],
+          "to": "R"
+        },
+        {
           "uuid": "0cb30f4b-311a-4ff5-bc0a-e58be9a80ce5",
           "from": "ACP",
+          "before": [],
           "after": [],
           "to": "T"
         }
@@ -929,13 +956,6 @@
             "smart00829",
             "cd05195"
           ]
-        },
-        {
-          "uuid": "81b7db01-33d4-4583-83e2-03aef6c85f2b",
-          "type": "DH",
-          "domains": [
-            "smart00826"
-          ]
         }
       ],
       "renames": [],
@@ -996,7 +1016,8 @@
       "uuid": "ffefe1ca-e1d6-467e-874c-6b4a67f51b28",
       "name": "Multi-modular PKS",
       "domains": [
-        "KS", "KS"
+        "KS",
+        "KS"
       ],
       "filters": [],
       "renames": [],
@@ -1030,7 +1051,7 @@
       "key": "98c29a5a-9d4a-47c1-b006-6a70419df5e1",
       "title": "Hybrid PKS-NRPS",
       "children": []
-    },  
+    },
     {
       "key": "6995bebf-1c08-4240-8648-740fcbdec4c9",
       "title": "NRPS",
@@ -1046,14 +1067,14 @@
       "title": "FAS",
       "children": [
         {
-        "key": "6936290a-5a67-4e24-bc8c-d9642a8f7366",
-        "title": "alpha subunit",
-        "children": []
+          "key": "6936290a-5a67-4e24-bc8c-d9642a8f7366",
+          "title": "alpha subunit",
+          "children": []
         },
         {
-        "key": "15b7d7e6-d445-43d2-bf42-457d31dbe790",
-        "title": "beta subunit",
-        "children": []
+          "key": "15b7d7e6-d445-43d2-bf42-457d31dbe790",
+          "title": "beta subunit",
+          "children": []
         }
       ]
     },
@@ -1072,35 +1093,35 @@
       "title": "PKS",
       "children": [
         {
-            "key": "ffefe1ca-e1d6-467e-874c-6b4a67f51b28",
-            "title": "Multi-modular PKS",
-            "children": []
+          "key": "ffefe1ca-e1d6-467e-874c-6b4a67f51b28",
+          "title": "Multi-modular PKS",
+          "children": []
         },
         {
-            "key": "7e0d35f7-933a-46af-8257-03d721383b0b",
-            "title": "Type I",
-            "children": [
-                {
-                    "key": "70d18b0f-0158-4aef-945e-272912114c51",
-                    "title": "Highly-reducing",
-                    "children": []
-                },
-                {
-                    "key": "7fab883b-f441-442e-8848-eead9c8e6670",
-                    "title": "Partially-reducing",
-                    "children": []
-                },
-                {
-                    "key": "bdd7b3e5-2fa5-452e-9601-b9670c7daf34",
-                    "title": "Non-reducing",
-                    "children": []
-                }
-            ]
+          "key": "7e0d35f7-933a-46af-8257-03d721383b0b",
+          "title": "Type I",
+          "children": [
+            {
+              "key": "70d18b0f-0158-4aef-945e-272912114c51",
+              "title": "Highly-reducing",
+              "children": []
+            },
+            {
+              "key": "7fab883b-f441-442e-8848-eead9c8e6670",
+              "title": "Partially-reducing",
+              "children": []
+            },
+            {
+              "key": "bdd7b3e5-2fa5-452e-9601-b9670c7daf34",
+              "title": "Non-reducing",
+              "children": []
+            }
+          ]
         },
         {
-            "key": "803ca192-5e02-46c2-ac85-65780e0f0a13",
-            "title": "Type III",
-            "children": []
+          "key": "803ca192-5e02-46c2-ac85-65780e0f0a13",
+          "title": "Type III",
+          "children": []
         }
       ]
     }
