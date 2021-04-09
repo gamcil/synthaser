@@ -829,7 +829,7 @@
     },
     {
       "uuid": "30288113-9ca5-40f5-926b-826bb752bc67",
-      "name": "beta chain",
+      "name": "beta subunit",
       "domains": [
         "AT",
 	"SAT",
@@ -866,7 +866,7 @@
     },
     {
       "uuid": "c2e192f4-c9ac-4016-b1b6-0b32fda5b831",
-      "name": "alpha chain",
+      "name": "alpha subunit",
       "domains": [
         "AT",
         "ACP",
@@ -1163,12 +1163,12 @@
       "key": "7b299f72-bd21-4720-97b4-6cc83faa36e3",
       "children": [
         {
-          "title": "alpha chain",
+          "title": "alpha subunit",
           "key": "c2e192f4-c9ac-4016-b1b6-0b32fda5b831",
           "children": []
         },
         {
-          "title": "beta chain",
+          "title": "beta subunit",
           "key": "30288113-9ca5-40f5-926b-826bb752bc67",
           "children": []
         }
