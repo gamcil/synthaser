@@ -173,6 +173,16 @@
           "superfamily": "cl08282",
           "label": "PKS_AT [smart00827]",
           "value": "PKS_AT"
+        },
+        {
+          "pssm": 223408,
+          "accession": "COG0331",
+          "name": "FabD",
+          "length": 310,
+          "bitscore": 61.1484,
+          "superfamily": "cl08282",
+          "label": "FabD [COG0331]",
+          "value": "FabD"
         }
       ]
     },
@@ -332,9 +342,19 @@
       ]
     },
     {
-      "uuid": "7335d609-5ef6-4a1f-9d53-257c6a869e49",
-      "name": "ACPS",
+      "uuid": "22ac684a-e3f9-4f44-9211-6e582ab8e4da",
+      "name": "PPT",
       "domains": [
+        {
+          "pssm": 273136,
+          "accession": "TIGR00556",
+          "name": "pantethn_trn",
+          "length": 128,
+          "bitscore": 122.16,
+          "superfamily": "cl00500",
+          "label": "pantethn_trn [TIGR00556]",
+          "value": "pantethn_trn"
+        },
         {
           "pssm": 223807,
           "accession": "COG0736",
@@ -344,16 +364,6 @@
           "superfamily": "cl00500",
           "label": "AcpS [COG0736]",
           "value": "AcpS"
-        },
-        {
-          "pssm": 234610,
-          "accession": "PRK00070",
-          "name": "acpS",
-          "length": 126,
-          "bitscore": 87.108,
-          "superfamily": "cl00500",
-          "label": "acpS [PRK00070]",
-          "value": "acpS"
         }
       ]
     },
@@ -574,6 +584,16 @@
           "superfamily": "cl09936",
           "label": "PP-binding [pfam00550]",
           "value": "PP-binding"
+        },
+        {
+          "pssm": 375752,
+          "accession": "pfam18325",
+          "name": "Fas_alpha_ACP",
+          "length": 162,
+          "bitscore": 252.103,
+          "superfamily": "pfam18325",
+          "label": "Fas_alpha_ACP [pfam18325]",
+          "value": "Fas_alpha_ACP"
         }
       ]
     },
@@ -682,6 +702,26 @@
           "superfamily": "cl00509",
           "label": "PKS_DH [smart00826]",
           "value": "PKS_DH"
+        },
+        {
+          "pssm": 239531,
+          "accession": "cd03447",
+          "name": "FAS_MaoC",
+          "length": 126,
+          "bitscore": 150.123,
+          "superfamily": "cl00509",
+          "label": "FAS_MaoC [cd03447]",
+          "value": "FAS_MaoC"
+        },
+        {
+          "pssm": 224941,
+          "accession": "COG2030",
+          "name": "MaoC",
+          "length": 159,
+          "bitscore": 55.1614,
+          "superfamily": "cl00509",
+          "label": "MaoC [COG2030]",
+          "value": "MaoC"
         }
       ]
     }
@@ -788,68 +828,124 @@
       "parent": null
     },
     {
-      "uuid": "15b7d7e6-d445-43d2-bf42-457d31dbe790",
-      "name": "beta subunit",
+      "uuid": "30288113-9ca5-40f5-926b-826bb752bc67",
+      "name": "beta chain",
       "domains": [
         "AT",
+	"SAT",
         "ER",
-        "DH"
+        "DH",
+        "AT",
+	"KS"
+      ],
+      "filters": [],
+      "renames": [
+        {
+          "uuid": "368ffff6-6e6d-4265-8036-27e923b457f8",
+          "from": "AT",
+          "before": [],
+          "after": [
+            "DH",
+	    "ER"
+          ],
+          "to": "MPT"
+        },
+        {
+          "uuid": "368ffff6-6e6d-4265-8036-27e923b457f8",
+          "from": "SAT",
+          "before": [],
+          "after": [
+            "DH",
+	    "ER"
+          ],
+          "to": "MPT"
+        }
+      ],
+      "children": [],
+      "evaluator": "(0 or 1) and 2 and 3 and not 5"
+    },
+    {
+      "uuid": "c2e192f4-c9ac-4016-b1b6-0b32fda5b831",
+      "name": "alpha chain",
+      "domains": [
+        "AT",
+        "ACP",
+        "KR",
+        "KS",
+	"ER"
+      ],
+      "filters": [],
+      "renames": [
+        {
+          "uuid": "dc6f676a-b024-463f-aa53-60c38c73f0de",
+          "from": "AT",
+          "before": ["ACP"],
+          "after": [],
+          "to": "MPT"
+        }
+      ],
+      "children": [],
+      "evaluator": "1 and 2 and 3 and not 4"
+    },
+    {
+      "uuid": "7b299f72-bd21-4720-97b4-6cc83faa36e3",
+      "name": "Fatty acid synthase",
+      "domains": [
+        "ER",
+        "DH",
+        "KS",
+        "ACP",
+        "KR"
       ],
       "filters": [
         {
-          "uuid": "84b4f7e4-8390-4983-8e72-48a7aad380f2",
+          "uuid": "9faf0d51-9f76-46a6-a198-85f2a263e96f",
+          "type": "KR",
+          "domains": [
+            "cd08950"
+          ]
+        },
+        {
+          "uuid": "95df88a4-3309-43df-92c3-ffa203d6a742",
+          "type": "ACP",
+          "domains": [
+            "pfam18325"
+          ]
+        },
+        {
+          "uuid": "81b82238-7809-4831-80d6-f5c0a94f826e",
+          "type": "KS",
+          "domains": [
+            "COG0304"
+          ]
+        },
+        {
+          "uuid": "3418595e-efc3-4499-9f7c-04b6b7e32e2e",
+          "type": "DH",
+          "domains": [
+            "cd03447",
+            "COG2030"
+          ]
+        },
+        {
+          "uuid": "f151e8ec-d2f3-49e6-86e5-0101c415f646",
           "type": "ER",
           "domains": [
             "COG4981"
           ]
         }
       ],
-      "renames": [],
-      "evaluator": "0 and 1 and 2",
-      "parent": "d09eff03-8279-4f5b-9e27-493b3728802e"
-    },
-    {
-      "uuid": "6936290a-5a67-4e24-bc8c-d9642a8f7366",
-      "name": "alpha subunit",
-      "domains": [
-        "AT",
-        "KR",
-        "ACPS"
-      ],
-      "filters": [
+      "renames": [
         {
-          "uuid": "12e2babf-9d82-48d8-bccc-39f8e2bca76f",
-          "type": "KR",
-          "domains": [
-            "cd08950"
-          ]
+          "uuid": "dc6f676a-b024-463f-aa53-60c38c73f0de",
+          "from": "AT",
+          "before": [],
+          "after": ["AT"],
+          "to": "MPT"
         }
       ],
-      "renames": [],
-      "evaluator": "0 and 1 and 2",
-      "parent": "d09eff03-8279-4f5b-9e27-493b3728802e"
-    },
-    {
-      "uuid": "d09eff03-8279-4f5b-9e27-493b3728802e",
-      "name": "FAS",
-      "domains": [
-        "KS"
-      ],
-      "filters": [
-        {
-          "uuid": "498cc841-8e5a-4e37-9644-6cfcbff99556",
-          "type": "KS",
-          "domains": [
-            "COG0304",
-            "cd00834",
-            "cd00830",
-            "TIGR03150"
-          ]
-        }
-      ],
-      "renames": [],
-      "evaluator": "0",
-      "parent": null
+      "children": [],
+      "evaluator": "0 or 1 or 2 or 3 or 4"
     },
     {
       "uuid": "bef04130-41ab-4b06-b9f2-8e8201fd74bf",
@@ -929,7 +1025,7 @@
       ],
       "filters": [],
       "renames": [],
-      "evaluator": "0 and 1",
+      "evaluator": "0 or 1",
       "parent": "7e0d35f7-933a-46af-8257-03d721383b0b"
     },
     {
@@ -1063,20 +1159,21 @@
       "children": []
     },
     {
-      "key": "d09eff03-8279-4f5b-9e27-493b3728802e",
-      "title": "FAS",
+      "title": "Fatty acid synthase",
+      "key": "7b299f72-bd21-4720-97b4-6cc83faa36e3",
       "children": [
         {
-          "key": "6936290a-5a67-4e24-bc8c-d9642a8f7366",
-          "title": "alpha subunit",
+          "title": "alpha chain",
+          "key": "c2e192f4-c9ac-4016-b1b6-0b32fda5b831",
           "children": []
         },
         {
-          "key": "15b7d7e6-d445-43d2-bf42-457d31dbe790",
-          "title": "beta subunit",
+          "title": "beta chain",
+          "key": "30288113-9ca5-40f5-926b-826bb752bc67",
           "children": []
         }
-      ]
+      ],
+      "expanded": true
     },
     {
       "key": "e5bac931-de73-4a05-9537-26cf1ff2535c",
@@ -1102,6 +1199,11 @@
           "title": "Type I",
           "children": [
             {
+              "key": "bdd7b3e5-2fa5-452e-9601-b9670c7daf34",
+              "title": "Non-reducing",
+              "children": []
+            },
+            {
               "key": "70d18b0f-0158-4aef-945e-272912114c51",
               "title": "Highly-reducing",
               "children": []
@@ -1109,11 +1211,6 @@
             {
               "key": "7fab883b-f441-442e-8848-eead9c8e6670",
               "title": "Partially-reducing",
-              "children": []
-            },
-            {
-              "key": "bdd7b3e5-2fa5-452e-9601-b9670c7daf34",
-              "title": "Non-reducing",
               "children": []
             }
           ]
