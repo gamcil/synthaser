@@ -40,8 +40,7 @@ def synthaser(
     evalue=None,
     maxhit=None,
     dmode=None,
-    domain_file=None,
-    classify_file=None,
+    rule_file=None,
     results_file=None,
 ):
     """Run synthaser."""
@@ -60,8 +59,7 @@ def synthaser(
                 query_file=query_file,
                 query_ids=query_ids,
                 cdsid=cdsid,
-                domain_file=domain_file,
-                classify_file=classify_file,
+                rule_file=rule_file,
                 results_file=results_file,
                 database=database,
                 smode=smode,
@@ -128,8 +126,7 @@ def main():
             evalue=args.evalue,
             maxhit=args.maxhit,
             dmode=args.dmode,
-            domain_file=args.domain_file,
-            classify_file=args.classify_file,
+            rule_file=args.rule_file,
             results_file=args.results_file,
         )
 

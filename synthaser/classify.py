@@ -45,11 +45,11 @@ def traverse_graph(graph, rules, domains, classifiers=None):
         rule = rules[title]
         if not rule.satisfied_by(domains):
             continue
-        rule.rename_domains(domains)
         classifiers.append(title)
         children = node.get("children")
         if children:
             classifiers = traverse_graph(children, rules, domains, classifiers)
+        rule.rename_domains(domains)
         return classifiers
     return classifiers
 
@@ -174,11 +174,15 @@ class Rule:
         if not self.renames:
             return
         for rename in self.renames:
-            flag = False
+            befores = rename.get("before", [])
+            afters = rename.get("after", [])
+            flag = not afters  # Start True if no after domains specified
             for domain in domains:
-                if not flag and domain.type in rename["after"]:
+                if not flag and domain.type in afters:
                     flag = True
-                if flag and domain.type == rename["to"]:
+                elif flag and domain.type in befores:
+                    flag = False
+                elif flag and domain.type == rename["from"]:
                     domain.type = rename["to"]
 
     def valid_family(self, domain):

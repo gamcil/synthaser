@@ -6,7 +6,7 @@ import logging
 
 from pathlib import Path
 
-from synthaser import rpsblast, ncbi, fasta, results
+from synthaser import rpsblast, ncbi, results, fasta
 from synthaser.models import SynthaseContainer
 from synthaser.classify import classify
 
@@ -83,7 +83,7 @@ def search(
     mode="remote",
     query_ids=None,
     query_file=None,
-    domain_file=None,
+    rule_file=None,
     classify_file=None,
     results_file=None,
     cdsid=None,
@@ -101,7 +101,7 @@ def search(
         mode (str): synthaser search mode ('local' or 'remote')
         query_ids (str, file): NCBI sequence identifiers to analyse
         query_file (file): Open FASTA file handle
-        domain_file (file): Custom domain rule JSON file to use when parsing results
+        rule_file (file): Custom rule JSON file to use when parsing results
         results_file (file): Results file from a previous CDSearch/RPSBLAST search
         cdsid (str): CDSearch ID from a previous search
         delay (int): Time delay (s) between polling NCBI for results (def. 20)
@@ -114,9 +114,9 @@ def search(
 
     query = prepare_input(query_ids, query_file)
 
-    if domain_file:
-        LOG.info("Reading domain rules from: %s", domain_file.name)
-        results.load_domain_json(domain_file)
+    if rule_file:
+        LOG.info("Reading rules from: %s", rule_file)
+        results.load_domains(rule_file)
 
     try:
         # If results_file is specified, first assume it's an actual results file
@@ -147,7 +147,7 @@ def search(
             query.get(header).domains = domains
 
     LOG.info("Classifying synthases...")
-    classify(query, rule_file=classify_file)
+    classify(query, rule_file=rule_file)
 
     return query
 
