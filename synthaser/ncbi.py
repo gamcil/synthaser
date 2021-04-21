@@ -107,10 +107,7 @@ def check(cdsid):
         CDSEARCH_URL,
         params={"cdsid": cdsid, "tdata": "hits"}
     )
-    match = re.search(r"#status\s+([\d])", response.text)
-    if not match:
-        raise ValueError("Failed to read search status")
-    code = match.group(1)
+    code = get_status_code(response.text)
     if code == "0":
         if response.text.endswith("Superfamily\n"):
             raise ValueError("Empty results file; perhaps invalid query?")
