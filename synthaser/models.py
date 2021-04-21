@@ -17,9 +17,9 @@ class Serialiser:
 
     def to_json(self, fp=None, **kwargs):
         if fp:
-            json.dump(self.to_dict(), fp, **kwargs)
+            json.dump(self.to_dict(), fp, indent=2, **kwargs)
         else:
-            return json.dumps(self.to_dict(), **kwargs)
+            return json.dumps(self.to_dict(), indent=2, **kwargs)
 
     @classmethod
     def from_json(cls, js, **kwargs):
@@ -164,7 +164,7 @@ class Synthase(Serialiser):
             self.header,
             str(self.sequence_length),
             self.architecture,
-            ", ".join(self.classification)
+            "|".join(self.classification)
         ]
         return delimiter.join(fields)
 
@@ -272,7 +272,7 @@ class Domain(Serialiser):
         }
 
 
-class SynthaseContainer(UserList):
+class SynthaseContainer(UserList, Serialiser):
     """Simple container class for Synthase objects.
 
     The purpose of this class is to facilitate batch actions on Synthase objects, i.e.
@@ -340,15 +340,12 @@ class SynthaseContainer(UserList):
                 return synthase
         raise KeyError(f"No Synthase object with header: '{header}'")
 
-    def to_json(self, handle, **kwargs):
-        """Serialise this container to JSON."""
-        dicts = [synthase.to_dict() for synthase in self]
-        json.dump(dicts, handle, **kwargs)
+    def to_dict(self):
+        return [synthase.to_dict() for synthase in self]
 
     @classmethod
-    def from_json(cls, handle):
-        """Load Synthase objects from JSON."""
-        return cls(Synthase.from_dict(entry) for entry in json.load(handle))
+    def from_dict(cls, d):
+        return cls(Synthase.from_dict(s) for s in d)
 
     def filter(self, classes=None, types=None, families=None):
         filtered = [
