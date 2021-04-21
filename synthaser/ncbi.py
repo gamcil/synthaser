@@ -26,6 +26,19 @@ SEARCH_PARAMS = {
     "dmode": "full",
     "tdata": "hits",
 }
+ERROR_CODES = {
+    "1": "Invalid CD-Search ID",
+    "2": "No effective input (usually no query proteins or search ID specified)",
+    "4": "Queue manager service error",
+    "5": "Data is corrupted or no longer available",
+}
+
+
+def get_status_code(text):
+    match = re.search(r"#status\s+([\d])", text)
+    if match:
+        return match.group(1)
+    raise RuntimeError("Failed to extract status code")
 
 
 def launch(query):
@@ -50,19 +63,14 @@ def launch(query):
         LOG.exception("Expected Synthase or SynthaseContainer")
         raise
     response = requests.post(CDSEARCH_URL, params=SEARCH_PARAMS, files=files)
-    status = re.search(r"#status\s+([\d])", response.text).group(1)
-    errors = {
-        "1": "Invalid request ID",
-        "2": "Invalid input; missing query information or search ID",
-        "4": "Queue manager service error",
-        "5": "Data corrupted or no longer available"
-    }
-    if status in errors:
-        LOG.error("Failed to start search: %s [Code %s]", errors[status], status)
-        raise SystemExit
-    cdsid = re.search(r"#cdsid\t(.+?)\n", response.text).group(1)
-    LOG.info("CD-Search succesfully started")
-    return cdsid
+    match = re.search(r"#cdsid\t(.+?)\n", response.text)
+    if match:
+        cdsid = match.group(1)
+        LOG.info("Search successfully started, %s", cdsid)
+        return cdsid
+    status = get_status_code(response.text)
+    LOG.error("Search failed; NCBI returned code %s (%s)", status, ERROR_CODES[status])
+    raise SystemExit
 
 
 def check(cdsid):
@@ -107,13 +115,7 @@ def check(cdsid):
         return True
     if code == "3":
         return False
-    errors = {
-        "1": "Invalid search ID",
-        "2": "No effective input (usually no query proteins or search ID specified)",
-        "4": "Queue manager (qman) service error",
-        "5": "Data is corrupted or no longer available (cache cleaned, etc)",
-    }
-    raise ValueError(f"Request failed; NCBI returned code {code} ({errors[code]})")
+    raise ValueError(f"Search failed; NCBI returned code {code} ({ERROR_CODES[code]})")
 
 
 def get_results(cdsid):
