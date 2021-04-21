@@ -70,6 +70,8 @@ def launch(query):
         return cdsid
     status = get_status_code(response.text)
     LOG.error("Search failed; NCBI returned code %s (%s)", status, ERROR_CODES[status])
+    if status == "1":
+        LOG.error("Potentially Batch CD-Search service down?")
     raise SystemExit
 
 
