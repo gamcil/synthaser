@@ -19,14 +19,20 @@ or clone the repo and install locally:
 ```sh
 $ git clone https://www.github.com/gamcil/synthaser
 $ cd synthaser
-$ pip install -e .
+$ pip install .
 ```
 
 ## Dependencies
-`synthaser` is written for Python 3.6+ and its only external Python dependency is
-`requests`, which is used for querying the NCBI's APIs. To perform local
-searches, the programs `RPS-BLAST` as well as the CD-Search post-processing
-utility, `rpsbproc`, should be installed (available from ...)
+`synthaser` is written in pure Python (3.6+), and requires only the following dependencies for
+remote searches:
+- `requests`, for interaction with the NCBI's CD-Search API
+- `biopython`, for retrieving sequences from NCBI Entrez
+
+If you want to do local searches, you'll need:
+- `RPS-BLAST`, for performing local domain searches
+- `rpsbproc`, for formatting RPS-BLAST results like CD-Search
+
+These can be obtained from the [NCBI FTP](ftp://ftp.ncbi.nih.gov/pub/mmdb/cdd/rpsbproc/).
 
 ## Usage
 A full `synthaser` search can be performed as simply as:
@@ -59,7 +65,7 @@ This will generate a figure like so:
 	width="400"
 	alt="Example synthaser output">
 
-Click here to play around with the full version of this example.
+[Click here](docs/_static/anid.html) to play around with the full version of this example.
 
 ### Saving your search session
 `synthaser` allows you to save your search results such that they can be easily
@@ -82,22 +88,25 @@ $ synthaser --json_file sequences.json ...
 
 ### Using your own rules
 Though `synthaser` was originally designed to analyse secondary metabolite synthases,
-it can easily be repurposed to analyse the domain architectures of
-any type of protein sequence.
+it can easily be repurposed to analyse the domain architectures of any type of protein sequence.
 
-Under the hood, `synthaser` uses two files to determine 1) which domains to save
-from a CD-Search run (`domains.json`) and 2) the rules used to classify sequences based on their
-domain architectures (`rules.json`). By default, `synthaser` will use the copies
-of these files distributed with the program. However, providing your own rules
+Under the hood, `synthaser` uses a central rule file which contains:
+1. Domain types, containing specific families to save in CD-Search results, corresponding to domain 'islands';
+2. Rules for classifying the sequences based on domain architecture predictions; and
+3. A hierarchy which determines the order of evaluation for the rules.
+
+We distribute our fungal megasynthase rule file as the default, but providing your own rule file
 is as simple as:
 
 ```sh
-$ synthaser -qf sequences.fasta -df my_domains.json -cf my_rules.json
+$ synthaser -qf sequences.fasta --rule_file my_rules.json
 ```
 
-For a detailed explanation of how to create your own `synthaser` rule files,
-as well as API 
-please refer to the `documentation`.
+We also provide a web application for assembling your own rule files, which can be
+[found here](https://gamcil.github.io/synthaser/).
+
+For a detailed explanation of how the rule file works, as well as API documentation,
+please refer to the [documentation](https://synthaser.readthedocs.io/en/latest/).
 
 ## Citations
 If you found `synthaser` helpful, please cite:
