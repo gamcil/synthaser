@@ -265,6 +265,36 @@ def add_genbank_subparser(subparsers):
     )
 
 
+def add_config_subparser(subparsers):
+    desc = "Configure synthaser"
+    parser = subparsers.add_parser(
+        "config",
+        help=desc,
+        description="Configure synthaser (e.g. for setting NCBI e-mail addresses or API keys)",
+        epilog=(
+            "Example usage\n-------------\n"
+            "Set an e-mail address:\n"
+            " $ synthaser config --email \"foo@bar.com\"\n\n"
+        ),
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
+    parser.add_argument(
+        "--email",
+        help="Your e-mail address, required by NCBI to prevent abuse",
+        type=str,
+    )
+    parser.add_argument(
+        "--api_key",
+        help="NCBI API key",
+        type=str,
+    )
+    parser.add_argument(
+        "--max_tries",
+        help="How many times failed requests are retried (def. 3)",
+        type=int,
+    )
+
+
 def get_parser():
     parser = argparse.ArgumentParser(
         "synthaser",
@@ -281,6 +311,7 @@ def get_parser():
     add_getseq_subparser(subparsers)
     add_extract_subparser(subparsers)
     add_genbank_subparser(subparsers)
+    add_config_subparser(subparsers)
     return parser
 
 

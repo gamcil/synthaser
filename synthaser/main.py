@@ -12,8 +12,11 @@ from synthaser import (
     models,
     parsers,
     download,
+    config,
 )
 from synthaser.plot import plot_synthases
+
+from Bio import Entrez
 
 logging.basicConfig(
     format="[%(asctime)s] %(levelname)s - %(message)s", datefmt="%H:%M:%S"
@@ -90,9 +93,17 @@ def synthaser(
 
 
 def main():
-    LOG.info("Starting synthaser")
-
     args = parsers.parse_args(sys.argv[1:])
+
+    LOG.info("Starting synthaser")
+    if args.command in ("getseq", "getdb", "search"):
+        # Set up mandatory Entrez params
+        cfg = config.get_config_parser()
+        Entrez.email = cfg["cblaster"].get("email", None)
+        Entrez.api_key = cfg["cblaster"].get("api_key", None)
+
+        if not Entrez.email and not Entrez.api_key:
+            raise IOError("No e-mail or NCBI API key found, please run synthaser config")
 
     if args.command == "getdb":
         download.getdb(args.database, args.folder)
@@ -141,6 +152,18 @@ def main():
             classes=args.classes,
             families=args.families,
             mode=args.mode,
+        )
+
+    elif args.command == "config":
+        if not args.email and not args.api_key:
+            LOG.info(
+                "No e-mail or API key specified; if this is your first time"
+                " running synthaser config, please make sure you provide one."
+            )
+        config.write_config_file(
+            email=args.email,
+            api_key=args.api_key,
+            max_tries=args.max_tries,
         )
 
     LOG.info("Done!")
