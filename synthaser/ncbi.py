@@ -15,7 +15,6 @@ LOG = logging.getLogger(__name__)
 
 EFETCH_URL = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi?"
 CDSEARCH_URL = "https://www.ncbi.nlm.nih.gov/Structure/bwrpsb/bwrpsb.cgi?"
-
 SEARCH_PARAMS = {
     "db": "cdd",
     "smode": "auto",
@@ -46,16 +45,23 @@ def launch(query):
         AttributeError: No CDSID was returned from NCBI
     """
     try:
-        files = {"queries": query.to_fasta()}
+        files = {"queries": query.to_fasta() + "\n\n"}
     except AttributeError:
         LOG.exception("Expected Synthase or SynthaseContainer")
         raise
     response = requests.post(CDSEARCH_URL, params=SEARCH_PARAMS, files=files)
-    try:
-        cdsid = re.search(r"#cdsid\t(.+?)\n", response.text).group(1)
-    except AttributeError:
-        LOG.exception("Search failed; no search ID returned")
-        raise
+    status = re.search(r"#status\s+([\d])", response.text).group(1)
+    errors = {
+        "1": "Invalid request ID",
+        "2": "Invalid input; missing query information or search ID",
+        "4": "Queue manager service error",
+        "5": "Data corrupted or no longer available"
+    }
+    if status in errors:
+        LOG.error("Failed to start search: %s [Code %s]", errors[status], status)
+        raise SystemExit
+    cdsid = re.search(r"#cdsid\t(.+?)\n", response.text).group(1)
+    LOG.info("CD-Search succesfully started")
     return cdsid
 
 
