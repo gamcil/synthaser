@@ -251,16 +251,6 @@
           "value": "PLN02287"
         },
         {
-          "pssm": 235987,
-          "accession": "PRK07314",
-          "name": "PRK07314",
-          "length": 411,
-          "bitscore": 601.393,
-          "superfamily": "cl09938",
-          "label": "PRK07314 [PRK07314]",
-          "value": "PRK07314"
-        },
-        {
           "pssm": 274452,
           "accession": "TIGR03150",
           "name": "fabF",
@@ -809,6 +799,26 @@
       "parent": null
     },
     {
+      "uuid": "e5bac931-de73-4a05-9537-26cf1ff2535d",
+      "name": "3-oxoacyl-ACP synthase",
+      "domains": [
+        "KS"
+      ],
+      "filters": [
+        {
+          "uuid": "0d999723-efd1-4133-a458-52c4df1b2405",
+          "type": "KS",
+          "domains": [
+	    "TIGR03150",
+	    "cd00834"
+          ]
+        }
+      ],
+      "renames": [],
+      "evaluator": "0",
+      "parent": null
+    },
+    {
       "uuid": "e5bac931-de73-4a05-9537-26cf1ff2535c",
       "name": "HMG-CoA synthase",
       "domains": [
@@ -1183,6 +1193,11 @@
     {
       "key": "da9b6691-1146-402e-accb-52a5d8739322",
       "title": "Thiolase",
+      "children": []
+    },
+    {
+      "key": "e5bac931-de73-4a05-9537-26cf1ff2535d",
+      "title": "3-oxoacyl-ACP synthase",
       "children": []
     },
     {
