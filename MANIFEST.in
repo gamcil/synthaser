@@ -1,3 +1,2 @@
-include synthaser/domains.json
 include synthaser/rules.json
 graft synthaser/plot
