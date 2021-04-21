@@ -66,7 +66,6 @@ def prepare_input(query_ids=None, query_file=None):
         SynthaseContainer: Synthase objects for query sequences
     Raises:
         ValueError: Neither query_ids nor query_file provided
-        ValueError: Too many sequences were provided (max. 4000 sequences)
     """
     if query_ids:
         container = _container_from_query_ids(query_ids)
@@ -74,8 +73,6 @@ def prepare_input(query_ids=None, query_file=None):
         container = _container_from_query_file(query_file)
     else:
         raise ValueError("Expected 'query_ids' or 'query_file'")
-    if len(container) > 4000:
-        raise ValueError("Too many sequences (NCBI limit = 4000)")
     return container
 
 
@@ -110,20 +107,26 @@ def search(
         cpu (int): Number of threads to use in rpsblast
     Returns:
         SynthaseContainer: Synthase objects representing query sequences
+    Raises:
+        ValueError: Too many sequences provided (NCBI limit = 4000)
     """
-
     query = prepare_input(query_ids, query_file)
+
+    if len(query) > 4000:
+        raise ValueError("Too many sequences (NCBI limit = 4000)")
 
     if rule_file:
         LOG.info("Reading rules from: %s", rule_file)
         results.load_domains(rule_file)
-
     try:
         # If results_file is specified, first assume it's an actual results file
         with open(results_file) as rf:
             LOG.info("Reading results from: %s", results_file)
             for header, domains in results.parse(rf, mode=mode).items():
-                query.get(header).domains = domains
+                try:
+                    query.get(header).domains = domains
+                except:
+                    LOG.warning("Failed to find %s", header)
     except (TypeError, FileNotFoundError):
         # Otherwise, user wants to start a search and save results under that name
         # OR just hasn't specified a results_file -> TypeError
