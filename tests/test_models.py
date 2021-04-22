@@ -79,7 +79,7 @@ def test_domain_str(domains):
 def test_domain_eq(domains):
     assert domains[0] == domains[0]
     assert domains[0] != domains[1]
-    with pytest.raises(NotImplementedError):
+    with pytest.raises(TypeError):
         domains[0] == 1
 
 
