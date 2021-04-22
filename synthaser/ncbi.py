@@ -66,7 +66,6 @@ def launch(query):
     match = re.search(r"#cdsid\t(.+?)\n", response.text)
     if match:
         cdsid = match.group(1)
-        LOG.info("Search successfully started, %s", cdsid)
         return cdsid
     status = get_status_code(response.text)
     LOG.error("Search failed; NCBI returned code %s (%s)", status, ERROR_CODES[status])
