@@ -33,7 +33,7 @@ def test_group_overlapping_hits():
 
 
 def test_parse_row():
-    row = "\t\t\t0\t100\t0\t0\t\tPKS_KS\t\t"
+    row = "\t\t\t0\t100\t0\t0\tsmart00825\tPKS_KS\t\t"
     domain = results.domain_from_row(row)
     assert domain.start == 0
     assert domain.end == 100
@@ -63,9 +63,20 @@ def test_results():
     return {
         "one": [
             Domain(
-                type="KS", domain="PKS_KS", start=0, end=100, evalue=0.0, bitscore=500
+                type="KS",
+                domain="PKS_KS",
+                start=0,
+                end=100,
+                evalue=0.0,
+                bitscore=500,
+                accession="smart00825",
+                pssm=214836,
+                superfamily="cl09938",
             ),
             Domain(
+                pssm=238428,
+                accession="cd00832",
+                superfamily="cl09938",
                 type="KS",
                 domain="CLF",
                 start=0,
@@ -76,7 +87,15 @@ def test_results():
         ],
         "two": [
             Domain(
-                type="A", domain="A_NRPS", start=0, end=100, evalue=0.0, bitscore=500
+                type="A",
+                domain="A_NRPS",
+                start=0,
+                end=100,
+                evalue=0.0,
+                bitscore=500,
+                pssm=341253,
+                accession="cd05930",
+                superfamily="cl17068",
             )
         ],
     }
@@ -85,10 +104,10 @@ def test_results():
 def test_parse_cdsearch_table(tmp_path, test_results):
     results_file = tmp_path / "results.tsv"
     results_file.write_text(
-        "Q#1 - >one\t\t\t0\t100\t0\t0\t\tPKS_KS\t\t\n"
-        "Q#1 - >one\t\t\t0\t100\t5.11327e-141\t0\t\tCLF\t\t\n"
+        "Q#1 - >one\t\t\t0\t100\t0\t0\tsmart00825\tPKS_KS\t\t\n"
+        "Q#1 - >one\t\t\t0\t100\t5.11327e-141\t0\tcd00832\tCLF\t\t\n"
         "Q#1 - >one\t\t\t0\t100\t5.11327e-141\t0\t\tNot_a_key_domain\t\t\n"
-        "Q#2 - >two\t\t\t0\t100\t0\t0\t\tA_NRPS\t\t\n"
+        "Q#2 - >two\t\t\t0\t100\t0\t0\tcd05930\tA_NRPS\t\t\n"
     )
     with results_file.open() as r:
         assert results.parse_cdsearch(r) == test_results
@@ -110,7 +129,8 @@ def test_filter_domains():
             type="KS", domain="PKS_KS", start=105, end=200, evalue=0.0, bitscore=999
         ),
     ]
-    assert results.filter_domains(domains) == [
+    result = results.filter_domains(domains)
+    expected = [
         Domain(
             type="E", domain="Condensation", start=0, end=100, evalue=0.0, bitscore=999
         ),
@@ -118,6 +138,10 @@ def test_filter_domains():
             type="KS", domain="PKS_KS", start=105, end=200, evalue=0.0, bitscore=999
         ),
     ]
+    for a, b in zip(result, expected):
+        assert a.domain == b.domain
+        assert a.start == b.start
+        assert a.end == b.end
 
 
 def test_filter_results(test_results):
