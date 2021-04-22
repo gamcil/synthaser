@@ -191,7 +191,6 @@ class Domain(Serialiser):
         end (int): End of domain hit in parent sequence
         evalue (float): Domain hit E-value
         bitscore (float): Domain hit bitscore
-        partial (str): Domain hit partiality ('C', 'N' or 'NC')
         accession (str): CDD accession of domain family
         superfamily (str): CDD accession of domain superfamily
     """
@@ -205,7 +204,6 @@ class Domain(Serialiser):
         end=None,
         evalue=None,
         bitscore=None,
-        partial=False,
         accession=None,
         superfamily=None,
     ):
@@ -216,7 +214,6 @@ class Domain(Serialiser):
         self.end = end
         self.evalue = evalue
         self.bitscore = bitscore
-        self.partial = partial
         self.accession = accession
         self.superfamily = superfamily
 
@@ -266,7 +263,6 @@ class Domain(Serialiser):
             "end": self.end,
             "evalue": self.evalue,
             "bitscore": self.bitscore,
-            "partial": self.partial,
             "accession": self.accession,
             "superfamily": self.superfamily,
         }
