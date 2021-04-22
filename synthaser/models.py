@@ -223,14 +223,14 @@ class Domain(Serialiser):
     # TODO: rework, or move this to e.g. domain1.equals(domain2)
     #       since this messes with object comparison e.g. domain1 in [...]
     def __eq__(self, other):
-        if isinstance(other, type(self)):
-            return (
-                self.type == other.type
-                and self.domain == other.domain
-                and self.start == other.start
-                and self.end == other.end
-            )
-        raise NotImplementedError
+        if not isinstance(other, Domain):
+            raise TypeError
+        return (
+            self.type == other.type
+            and self.domain == other.domain
+            and self.start == other.start
+            and self.end == other.end
+        )
 
     def __len__(self):
         return self.end - self.start
@@ -266,6 +266,10 @@ class Domain(Serialiser):
             "accession": self.accession,
             "superfamily": self.superfamily,
         }
+    
+    @classmethod
+    def from_dict(cls, d):
+        return cls(**d)
 
 
 class SynthaseContainer(UserList, Serialiser):
