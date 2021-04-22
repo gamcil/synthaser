@@ -56,8 +56,8 @@ def test_CDSearch_check_status_empty_file():
         "Query\tHit type\tPSSM-ID\tFrom\tTo\tE-Value\tBitscore"
         "\tAccession\tShort\tname\tIncomplete\tSuperfamily\n"
     )
-    with requests_mock.Mocker() as m, pytest.raises(ValueError):
-        m.get(ncbi.CDSEARCH_URL, text=text)
+    with requests_mock.Mocker() as mock, pytest.raises(ValueError):
+        mock.post(ncbi.CDSEARCH_URL, text=text)
         ncbi.check(cdsid)
 
 
@@ -71,19 +71,19 @@ def test_CDSearch_check_status():
         "#datatype\thitsFull Results\n#status\t{}\tmsg\tJob is still running\n'"
     )
     with requests_mock.Mocker() as m:
-        # Returns Response if job has completed
-        m.get(ncbi.CDSEARCH_URL, text=text.format("0"))
+        # Returns True if job has completed
+        m.post(ncbi.CDSEARCH_URL, text=text.format("0"))
         response = ncbi.check(cdsid)
-        assert response is not None
+        assert response is True
 
-        # Returns None if job is still running
-        m.get(ncbi.CDSEARCH_URL, text=text.format("3"))
+        # Returns False if job is still running
+        m.post(ncbi.CDSEARCH_URL, text=text.format("3"))
         response = ncbi.check(cdsid)
-        assert response is None
+        assert response is False
 
         # Raises ValueError if something went wrong with the search
         with pytest.raises(ValueError):
-            m.get(ncbi.CDSEARCH_URL, text=text.format("1"))
+            m.post(ncbi.CDSEARCH_URL, text=text.format("1"))
             response = ncbi.check(cdsid)
 
 
@@ -96,12 +96,12 @@ def test_CDSearch_retrieve_results():
     )
     with requests_mock.Mocker() as m:
         # Case when bad status code received, raises ValueError
-        m.get(ncbi.CDSEARCH_URL, text=text.format("1"))
+        m.post(ncbi.CDSEARCH_URL, text=text.format("1"))
         with pytest.raises(ValueError):
             response = ncbi.retrieve(cdsid)
 
         # Case when status is 3 (still running), loop ends but no response
-        m.get(ncbi.CDSEARCH_URL, text=text.format("3"))
+        m.post(ncbi.CDSEARCH_URL, text=text.format("3"))
         with pytest.raises(ValueError):
             response = ncbi.retrieve(cdsid, delay=0, max_retries=1)
 
@@ -110,7 +110,7 @@ def test_CDSearch_retrieve_results():
         text = anid.read()
 
     with requests_mock.Mocker() as m:
-        m.get(ncbi.CDSEARCH_URL, text=text)
+        m.post(ncbi.CDSEARCH_URL, text=text)
 
         # Successful run, test save to file handle
         response = ncbi.retrieve(cdsid)
@@ -133,23 +133,28 @@ def test_CDSearch_retrieve_results_input():
         ncbi.retrieve("test", delay=5)
 
 
-def test_efetch_sequences_bad_response():
-    with requests_mock.Mocker() as m, pytest.raises(requests.HTTPError):
-        m.post(
-            "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi?",
-            status_code="400",
-        )
+def test_efetch_sequences_bad_response(monkeypatch):
+    from Bio import Entrez
+
+    def mocked_efetch(db, id, rettype, retmode):
+        raise IOError
+
+    monkeypatch.setattr(Entrez, "efetch", mocked_efetch)
+
+    with pytest.raises(IOError):
         ncbi.efetch_sequences(["header"])
 
 
-def test_efetch_sequences():
-    headers = ["sequence", "sequence2"]
-    with requests_mock.Mocker() as m:
-        m.post(
-            "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi?",
-            text=">sequence with long definition\nACGT\n>sequence2 test\nACGT",
-        )
-        assert ncbi.efetch_sequences(headers) == {
-            "sequence": "ACGT",
-            "sequence2": "ACGT",
-        }
+def test_efetch_sequences(monkeypatch):
+    from Bio import Entrez
+    from io import StringIO
+
+    def mocked_efetch(db, id, rettype, retmode):
+        return StringIO(">sequence with long definition\nACGT\n>sequence2 test\nACGT")
+
+    monkeypatch.setattr(Entrez, "efetch", mocked_efetch)
+
+    assert ncbi.efetch_sequences(["sequence", "sequence2"]) == {
+        "sequence": "ACGT",
+        "sequence2": "ACGT",
+    }

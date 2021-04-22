@@ -29,12 +29,11 @@ def test_create(header, sequence, wrap, result):
 def test_parse(tmp_path):
     """Test synthaser.parse_fasta()."""
     fasta_file = tmp_path / "fasta.faa"
-    fasta_str = (
+    fasta_file.write_text(
         ">TEST1\nACGTACGTACGTACGT\nACGTGCACGTGCACGTGCA\n"
         ">TEST2\nACGTGCAGTAGCTGAC\nAGACGGATTGCCAGTGACA\n\n"
         ">TEST3 test space\n\nACGTGCACGTGCA"
     )
-    fasta_file.write_text(fasta_str)
 
     with fasta_file.open() as fasta_handle:
         parsed = fasta.parse(fasta_handle)
@@ -42,7 +41,7 @@ def test_parse(tmp_path):
     assert parsed == {
         "TEST1": "ACGTACGTACGTACGTACGTGCACGTGCACGTGCA",
         "TEST2": "ACGTGCAGTAGCTGACAGACGGATTGCCAGTGACA",
-        "TEST3 test space": "ACGTGCACGTGCA",
+        "TEST3": "ACGTGCACGTGCA",
     }
 
 

@@ -23,7 +23,9 @@ def test_Domain_serialisation(tmp_path):
         domain="PKS_KS",
         evalue=0.01,
         bitscore=100,
-        partial="NC",
+        accession="smart00825",
+        pssm=214836,
+        superfamily="cl09938",
     )
     result_dict = {
         "start": 0,
@@ -32,30 +34,31 @@ def test_Domain_serialisation(tmp_path):
         "domain": "PKS_KS",
         "evalue": 0.01,
         "bitscore": 100,
-        "partial": "NC",
+        "accession": "smart00825",
+        "pssm": 214836,
+        "superfamily": "cl09938",
     }
     assert domain.to_dict() == result_dict
 
     json_file = tmp_path / "json"
-    json_file.write_text(domain.to_json())
+
+    with json_file.open("w") as fp:
+        domain.to_json(fp)
 
     with json_file.open() as js:
         from_json = Domain.from_json(js)
 
-    assert from_json.start == 0
-    assert from_json.end == 100
-    assert from_json.type == "KS"
-    assert from_json.domain == "PKS_KS"
-    assert from_json.partial == "NC"
+    for key, value in result_dict.items():
+        assert getattr(from_json, key) == value
 
 
 @pytest.fixture
 def domains():
     return [
-        Domain(start=1, end=90, type="KS", domain="PKS_KS", partial="-"),
-        Domain(start=10, end=80, type="KS", domain="PKS", partial="NC"),
-        Domain(start=100, end=200, type="AT", domain="PKS_AT", partial="-"),
-        Domain(start=130, end=190, type="AT", domain="Acyl_transf_1", partial="-"),
+        Domain(start=1, end=90, type="KS", domain="PKS_KS"),
+        Domain(start=10, end=80, type="KS", domain="PKS"),
+        Domain(start=100, end=200, type="AT", domain="PKS_AT"),
+        Domain(start=130, end=190, type="AT", domain="Acyl_transf_1"),
     ]
 
 
@@ -65,14 +68,12 @@ def synthase(domains):
         header="test",
         sequence="A" * 200,
         domains=[domains[0], domains[2]],
-        type="PKS",
-        subtype="NR-PKS",
+        classification=None
     )
 
 
 def test_domain_str(domains):
     assert str(domains[0]) == "KS"
-    assert str(domains[1]) == "(KS)"
 
 
 def test_domain_eq(domains):
@@ -110,7 +111,9 @@ def test_Synthase_serialisation(synthase, domains, tmp_path):
                 "domain": "PKS_KS",
                 "evalue": None,
                 "bitscore": None,
-                "partial": "-",
+                "pssm": None,
+                "superfamily": None,
+                "accession": None,
             },
             {
                 "start": 100,
@@ -119,11 +122,12 @@ def test_Synthase_serialisation(synthase, domains, tmp_path):
                 "domain": "PKS_AT",
                 "evalue": None,
                 "bitscore": None,
-                "partial": "-",
+                "pssm": None,
+                "superfamily": None,
+                "accession": None,
             },
         ],
-        "type": "PKS",
-        "subtype": "NR-PKS",
+        "classification": []
     }
 
     assert synthase.to_dict() == result_dict
@@ -137,8 +141,6 @@ def test_Synthase_serialisation(synthase, domains, tmp_path):
     assert from_json.header == "test"
     assert from_json.sequence == "A" * 200
     assert from_json.domains == [domains[0], domains[2]]
-    assert from_json.type == "PKS"
-    assert from_json.subtype == "NR-PKS"
 
 
 def test_Synthase_extract_domains(synthase, domains):
@@ -148,11 +150,11 @@ def test_Synthase_extract_domains(synthase, domains):
 
     synthase.sequence = "A" * 10 + "B" * 70 + "C" * 10 + "D" * 110
     synthase.domains = domains[:3]
+
     assert synthase.extract_domains() == {
         "KS": ["A" * 10 + "B" * 70 + "C" * 10, "A" + "B" * 70],
-        "AT": ["D" * 101],
+        "AT": ["D" * 101]
     }
-
     with pytest.raises(ValueError):
         synthase.sequence = ""
         synthase.extract_domains()
@@ -170,24 +172,20 @@ def sc():
                 header="one",
                 sequence="AAAAABBBBB",
                 domains=[Domain(type="KS", start=1, end=5)],
-                type="one",
-                subtype="one",
+                classification=None,
             ),
             Synthase(
                 header="two",
                 sequence="BBBBBAAAAA",
                 domains=[Domain(type="KS", start=6, end=10)],
-                type="two",
-                subtype="two",
+                classification=None,
             ),
         ]
     )
 
 
 def test_SynthaseContainer_extract_domains(sc):
-    assert sc.extract_domains() == {
-        "KS": [("one_KS_0", "AAAAA"), ("two_KS_0", "AAAAA")]
-    }
+    assert sc.extract_domains() == {'one': {'KS': ['AAAAA']}, 'two': {'KS': ['AAAAA']}}
 
 
 def test_SynthaseContainer_add_typeerror(sc):
@@ -231,27 +229,6 @@ def test_SynthaseContainer_get(sc):
     assert sc.get("two") == sc[1]
 
 
-def test_SynthaseContainer_attr_iter_valueerror(sc):
-    with pytest.raises(ValueError):
-        dict(sc._attr_iter("fake"))
-
-
-def test_SynthaseContainer_attr_iter(sc):
-    result = {"one": sc[:1], "two": sc[1:]}
-    assert dict(sc._attr_iter("type")) == result
-    assert dict(sc._attr_iter("subtype")) == result
-
-
-def test_SynthaseContainer_subtypes(sc):
-    result = {"one": sc[:1], "two": sc[1:]}
-    assert dict(sc.subtypes()) == result
-
-
-def test_SynthaseContainer_types(sc):
-    result = {"one": sc[:1], "two": sc[1:]}
-    assert dict(sc.types()) == result
-
-
 def test_SynthaseContainer_to_fasta(sc):
     assert sc.to_fasta() == ">one\nAAAAABBBBB\n>two\nBBBBBAAAAA"
 
@@ -264,7 +241,8 @@ def test_SynthaseContainer_from_sequences(sc):
 
 
 def test_SynthaseContainer_str(sc):
-    assert str(sc) == "one\n---\none\tKS\n\ntwo\n---\ntwo\tKS"
+    print(sc)
+    assert str(sc) == "one\tKS\ntwo\tKS"
 
 
 def test_SynthaseContainer_json_serialisation(sc, tmp_path):
