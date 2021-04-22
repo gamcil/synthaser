@@ -88,7 +88,7 @@ def domain_from_row(row):
         bitscore,
         accession,
         domain,
-        partial,
+        _,
         superfamily,
     ) = row.split("\t")
 
@@ -103,7 +103,6 @@ def domain_from_row(row):
         end=int(end),
         evalue=float(evalue),
         bitscore=float(bitscore),
-        partial=partial,
         accession=accession,
         superfamily=superfamily,
     )
