@@ -1,5 +1,6 @@
 # synthaser
 [![Coverage Status](https://coveralls.io/repos/github/gamcil/synthaser/badge.svg?branch=master)](https://coveralls.io/github/gamcil/synthaser?branch=master&service=github)
+![Tests passing](https://github.com/gamcil/synthaser/actions/workflows/python-app.yml/badge.svg)
 [![Documentation Status](https://readthedocs.org/projects/synthaser/badge/?version=latest)](https://synthaser.readthedocs.io/en/latest/?badge=latest)
 [![PyPI version](https://badge.fury.io/py/synthaser.svg)](https://badge.fury.io/py/synthaser)
 
