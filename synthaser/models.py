@@ -223,7 +223,7 @@ class Domain(Serialiser):
     # TODO: rework, or move this to e.g. domain1.equals(domain2)
     #       since this messes with object comparison e.g. domain1 in [...]
     def __eq__(self, other):
-        if not isinstance(other, Domain):
+        if not isinstance(other, type(self)):
             raise TypeError
         return (
             self.type == other.type

@@ -28,15 +28,21 @@ def test_container_from_query_ids_valueerror():
         search._container_from_query_ids(1)
 
 
-def test_container_from_query_ids_iterable():
-    ids = ["one"]
+def test_container_from_query_ids_iterable(monkeypatch):
+    def mocked_efetch(headers):
+        return {"one": "ACGT", "two": "ACGT"}
 
-    with requests_mock.Mocker() as m:
-        m.post(ncbi.EFETCH_URL, text=">one\nabcdef")
-        sc = search._container_from_query_ids(ids)
+
+    monkeypatch.setattr(ncbi, "efetch_sequences", mocked_efetch)
+
+    ids = ["one", "two"]
+    sc = search._container_from_query_ids(ids)
 
     assert sc == models.SynthaseContainer(
-        [models.Synthase(header="one", sequence="abcdef")]
+        [
+            models.Synthase(header="one", sequence="acgt"),
+            models.Synthase(header="two", sequence="acgt")
+        ]
     )
 
 
@@ -59,27 +65,3 @@ def test_container_from_query_ids_file(tmp_path, monkeypatch):
 def test_prepare_input_valueerror():
     with pytest.raises(ValueError):
         search.prepare_input()
-
-
-def test_prepare_input_too_many_sequences(monkeypatch):
-    def response(ids):
-        return models.SynthaseContainer([models.Synthase()] * 4001)
-
-    monkeypatch.setattr(search, "_container_from_query_ids", response)
-
-    with pytest.raises(ValueError):
-        search.prepare_input(query_ids=["test"])
-
-
-def test_search_bad_response(monkeypatch):
-    query_ids = ["test"]
-
-    def response(ids):
-        return models.SynthaseContainer([models.Synthase(header="test")])
-
-    monkeypatch.setattr(search, "_container_from_query_ids", response)
-
-    with requests_mock.Mocker() as m, pytest.raises(AttributeError):
-        # RuntimeError In case of empty response, or response where regex pattern is not matched
-        m.post(ncbi.CDSEARCH_URL, text="")
-        search.search(mode="remote", query_ids=query_ids)
