@@ -31,7 +31,6 @@ User guide
 Get started using synthaser.
 
 .. toctree::
-        :maxdepth: 2
         
         guide/index
 
