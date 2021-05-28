@@ -17,12 +17,12 @@ def get_config_parser():
     # Get configuration directory, platform agnostic
     config_dir = get_config_dir()
     if not config_dir.is_dir():
-        raise IOError("No configuration folder detected, please run cblaster config")
+        raise IOError("No configuration folder detected, please run synthaser config")
 
     # Check if there's an existing config.ini
     config_ini = config_dir / "config.ini"
     if not config_ini.exists():
-        raise IOError("config.ini not found, please run cblaster config")
+        raise IOError("config.ini not found, please run synthaser config")
 
     # Read in the configuration values and return the parser
     config_parser = configparser.ConfigParser()
@@ -53,13 +53,13 @@ def write_config_file(**kwargs):
         config_parser.read(config_ini)
     else:
         LOG.info("No configuration file found, creating")
-        config_parser["cblaster"] = {}
+        config_parser["synthaser"] = {}
 
     # Set new values
     for key, value in kwargs.items():
         if not value:
             continue
-        config_parser["cblaster"][key] = str(value)
+        config_parser["synthaser"][key] = str(value)
 
     # Write new config file
     LOG.info("Writing configuration to %s", config_ini)
