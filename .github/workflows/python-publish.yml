@@ -8,24 +8,22 @@ on:
     types: [created]
 
 jobs:
-  deploy:
-
+  build-n-publish:
+    name: Build and publish Python distributions to PyPI
     runs-on: ubuntu-latest
-
     steps:
     - uses: actions/checkout@v2
+    - name: Fetch history for tags and branches
+      run: git fetch --prune --unshallow
     - name: Set up Python
       uses: actions/setup-python@v2
       with:
         python-version: '3.x'
-    - name: Install dependencies
-      run: |
-        python -m pip install --upgrade pip
-        pip install setuptools wheel twine
-    - name: Build and publish
-      env:
-        TWINE_USERNAME: ${{ secrets.PYPI_USERNAME }}
-        TWINE_PASSWORD: ${{ secrets.PYPI_PASSWORD }}
-      run: |
-        python setup.py sdist bdist_wheel
-        twine upload dist/*
+    - name: Install pypa/build
+      run: python -m pip install build --user
+    - name: Build binary wheel and source tarball
+      run: python -m build --sdist --wheel --outdir dist/
+    - name: Publish distribution to PyPI
+      uses: pypa/gh-action-pypi-publish@master
+      with:
+        password: ${{ secrets.PYPI_API_TOKEN }}
