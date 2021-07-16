@@ -6,6 +6,7 @@ import re
 from pathlib import Path
 
 from Bio import SeqIO
+from Bio.SeqRecord import SeqRecord
 
 
 LOG = logging.getLogger(__name__)
@@ -38,14 +39,23 @@ def get_NRPS_PKS(features):
         if ftype == "PKS":
             pks.append(feature)
         elif ftype == "NRPS":
-            nrps.append(ftype)
+            nrps.append(feature)
     return pks, nrps
 
 
+def get_feature_label(feature):
+    tags = ["protein_id", "locus_tag", "ID", "Name", "gene"]
+    for tag in tags:
+        try:
+            return feature.annotations[tag]
+        except KeyError:
+            continue
+    raise KeyError(f"Could not find a label for feature:\n {feature}")
+
+
 def write(path, features):
-    with open(path, "w") as fp:
-        LOG.info("Writing %i feature(s) to file: %s", len(features), fp.name)
-        SeqIO.write(features, fp, "fasta")
+    LOG.info("Writing %i feature(s) to file: %s", len(features), path.name)
+    SeqIO.write(features, path, "fasta")
 
 
 def convert(path, antismash=False):
@@ -66,7 +76,8 @@ def convert(path, antismash=False):
     # Blank out descriptions for clean FASTA headers
     for feature in features:
         feature.description = ""
-
+        feature.id = get_feature_label(feature)
+    
     # If antismash=True, look for PKS and NRPS sequences only
     if antismash:
         LOG.info("Finding antiSMASH PKS and NRPS features")
