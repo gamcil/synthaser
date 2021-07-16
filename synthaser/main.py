@@ -99,8 +99,8 @@ def main():
     if args.command in ("getseq", "getdb", "search"):
         # Set up mandatory Entrez params
         cfg = config.get_config_parser()
-        Entrez.email = cfg["cblaster"].get("email", None)
-        Entrez.api_key = cfg["cblaster"].get("api_key", None)
+        Entrez.email = cfg["synthaser"].get("email", None)
+        Entrez.api_key = cfg["synthaser"].get("api_key", None)
 
         if not Entrez.email and not Entrez.api_key:
             raise IOError("No e-mail or NCBI API key found, please run synthaser config")
