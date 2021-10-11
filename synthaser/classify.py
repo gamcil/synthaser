@@ -2,8 +2,10 @@
 
 import logging
 
+from typing import List, Optional
+
 from synthaser import settings
-from synthaser.models import Serialiser
+from synthaser.models import Serialiser, Domain
 
 LOG = logging.getLogger(__name__)
 
@@ -52,6 +54,14 @@ def traverse_graph(graph, rules, domains, classifiers=None):
         rule.rename_domains(domains)
         return classifiers
     return classifiers
+
+
+def get_domain_index(query: str, domains: List[Domain]) -> Optional[int]:
+    """Finds the earliest index of a domain in a list of domains, if present."""
+    for index, domain in enumerate(domains):
+        if query == domain.type:
+            return index
+    return None
 
 
 class RuleGraph(Serialiser):
@@ -121,6 +131,7 @@ class Rule:
     def __init__(
         self,
         name=None,
+        order=None,
         renames=None,
         domains=None,
         filters=None,
@@ -128,6 +139,7 @@ class Rule:
         **kwargs
     ):
         self.name = name if name else ""
+        self.order = order if order else []
         self.renames = renames if renames else []
         self.domains = domains if domains else []
         self.filters = filters if filters else []
@@ -136,6 +148,7 @@ class Rule:
     def to_dict(self):
         return {
             "name": self.name,
+            "order": self.order,
             "renames": self.renames,
             "domains": self.domains,
             "filters": self.filters,
@@ -206,6 +219,23 @@ class Rule:
                 return domain.accession in filt["domains"]
         return True
 
+    def valid_order(self, domains: List[Domain]) -> bool:
+        """Checks given domains match specified order, if any."""
+        if not self.order:
+            return True
+        previous = -1
+        for domain in self.order:
+            if isinstance(domain, list):
+                indices = [get_domain_index(query, domains) for query in domain]
+                index = min(i for i in indices if i is not None)
+            else:
+                index = get_domain_index(domain, domains)
+            # Domain not found, or current domain occurs before previous
+            if index is None or index < previous:
+                return False
+            previous = index
+        return True
+
     def satisfied_by(self, domains):
         """Evaluates this rule against a collection of domains.
 
@@ -233,7 +263,7 @@ class Rule:
                     match = True
                     break
             conditions.append(match)
-        return self.evaluate(conditions)
+        return self.evaluate(conditions) and self.valid_order(domains)
 
 
 def classify(synthases, rule_file=None):

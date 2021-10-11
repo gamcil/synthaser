@@ -718,6 +718,67 @@
   ],
   "rules": [
     {
+      "uuid": "98c29a5a-9d4a-47c1-b006-6a70419df5e2",
+      "name": "Hybrid NRPS-PKS",
+      "domains": [
+        "KS",
+        "A",
+        "C",
+        "ACP",
+        "TR"
+      ],
+			"order": [["A", "C"], "KS"],
+      "filters": [],
+      "renames": [
+        {
+          "uuid": "486de412-09a3-44d1-8cfc-575f00d22885",
+          "from": "TR",
+          "after": [
+            "A",
+            "C"
+          ],
+          "before": [],
+          "to": "R"
+        },
+        {
+          "uuid": "01eb7549-0576-4ebd-a8e3-26e5d3ed43b5",
+          "from": "TR",
+          "after": [
+            "KS"
+          ],
+          "before": [
+            "A",
+            "C"
+          ],
+          "to": "TR"
+        },
+        {
+          "uuid": "01eb7549-0576-4ebd-a8e3-26e5d3ed43b4",
+          "from": "ACP",
+          "after": [
+            "A",
+            "C"
+          ],
+          "before": [],
+          "to": "T"
+        },
+        {
+          "uuid": "01eb7549-0576-4ebd-a8e3-26e5d3ed43b6",
+          "from": "T",
+          "after": [
+            "KS"
+          ],
+          "before": [
+            "A",
+            "C"
+          ],
+          "to": "ACP"
+        }
+      ],
+      "evaluator": "0 and (1 or 2)",
+      "parent": null
+    },
+    {
       "uuid": "98c29a5a-9d4a-47c1-b006-6a70419df5e1",
       "name": "Hybrid PKS-NRPS",
       "domains": [
@@ -727,6 +788,7 @@
         "ACP",
         "TR"
       ],
+			"order": ["KS", ["A", "C"]],
       "filters": [],
       "renames": [
         {
@@ -1135,6 +1197,11 @@
     }
   ],
   "hierarchy": [
+    {
+      "key": "98c29a5a-9d4a-47c1-b006-6a70419df5e2",
+      "title": "Hybrid NRPS-PKS",
+      "children": []
+    },
     {
       "key": "98c29a5a-9d4a-47c1-b006-6a70419df5e1",
       "title": "Hybrid PKS-NRPS",
