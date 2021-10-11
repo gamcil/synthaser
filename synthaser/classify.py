@@ -220,7 +220,16 @@ class Rule:
         return True
 
     def valid_order(self, domains: List[Domain]) -> bool:
-        """Checks given domains match specified order, if any."""
+        """Checks given domains match specified order, if any.
+
+        Used for rules where domain order matters, e.g. a hybrid NRPS-PKS
+        vs PKS-NRPS, where NRPS module comes before PKS and vice versa.
+
+        Iterates domain order list, finding earliest matching index in
+        domain list. If the domain is not found, or the current index
+        is lower than the previous (current domain occurs earlier than
+        previous domain), order is invalid and False is returned.
+        """
         if not self.order:
             return True
         previous = -1
