@@ -13,6 +13,7 @@ from synthaser import (
     parsers,
     download,
     config,
+    classify
 )
 from synthaser.plot import plot_synthases
 
@@ -45,6 +46,7 @@ def synthaser(
     dmode=None,
     rule_file=None,
     results_file=None,
+    reclassify=False
 ):
     """Run synthaser."""
     # Set flag to prevent re-writing the JSON we load from
@@ -55,6 +57,9 @@ def synthaser(
         with open(json_file) as fp:
             synthases = models.SynthaseContainer.from_json(fp)
         _json_loaded = True
+        if reclassify:
+            LOG.info("Reclassifying synthases in JSON file")
+            classify.classify(synthases, rule_file=rule_file)
     else:
         try:
             synthases = search.search(
@@ -139,6 +144,7 @@ def main():
             dmode=args.dmode,
             rule_file=args.rule_file,
             results_file=args.results_file,
+            reclassify=args.reclassify,
         )
 
     elif args.command == "extract":
