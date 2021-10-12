@@ -45,7 +45,7 @@ These can be obtained from the [NCBI FTP](ftp://ftp.ncbi.nih.gov/pub/mmdb/cdd/rp
 A full `synthaser` search can be performed as simply as:
 
 ```sh
-$ synthaser -qf sequences.fasta
+$ synthaser search -qf sequences.fasta
 ```
 
 Where `sequences.fasta` is a FASTA format file containing the protein sequences
@@ -63,7 +63,7 @@ so you can easily explore your results. All that is required is one
 extra argument:
 
 ```sh
-$ synthaser -qf sequences.fasta -p
+$ synthaser search -qf sequences.fasta -p
 ```
 
 This will generate a figure like so:
@@ -82,7 +82,7 @@ the search.
 To do this, use the `--json_file` command:
 
 ```sh
-$ synthaser -qf sequences.fasta --json_file sequences.json
+$ synthaser search -qf sequences.fasta --json_file sequences.json
 ```
 
 This will save all of your results, in JSON format, to the file
@@ -106,7 +106,7 @@ We distribute our fungal megasynthase rule file as the default, but providing yo
 is as simple as:
 
 ```sh
-$ synthaser -qf sequences.fasta --rule_file my_rules.json
+$ synthaser search -qf sequences.fasta --rule_file my_rules.json
 ```
 
 We also provide a web application for assembling your own rule files, which can be
