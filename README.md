@@ -23,7 +23,7 @@ $ cd synthaser
 $ pip install .
 ```
 
-Finally, configure your e-mail address (used when making requests to NCBI servers):
+Finally, configure synthaser with your e-mail address or NCBI API key (used when making requests to NCBI servers), for example:
 
 ```sh
 $ synthaser config --email your@email.com
