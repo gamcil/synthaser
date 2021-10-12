@@ -90,7 +90,7 @@ This will save all of your results, in JSON format, to the file
 as:
 
 ```sh
-$ synthaser --json_file sequences.json ...
+$ synthaser search --json_file sequences.json ...
 ```
 
 ### Using your own rules
