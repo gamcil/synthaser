@@ -23,6 +23,12 @@ $ cd synthaser
 $ pip install .
 ```
 
+Finally, configure your e-mail address (used when making requests to NCBI servers):
+
+```sh
+$ synthaser config --email your@email.com
+```
+
 ## Dependencies
 `synthaser` is written in pure Python (3.6+), and requires only the following dependencies for
 remote searches:
@@ -66,7 +72,7 @@ This will generate a figure like so:
 	width="400"
 	alt="Example synthaser output">
 
-[Click here](docs/_static/anid.html) to play around with the full version of this example.
+[Click here](https://synthaser.readthedocs.io/en/latest/_static/anid.html) to play around with the full version of this example.
 
 ### Saving your search session
 `synthaser` allows you to save your search results such that they can be easily
