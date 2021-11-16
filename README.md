@@ -119,5 +119,7 @@ please refer to the [documentation](https://synthaser.readthedocs.io/en/latest/)
 If you found `synthaser` helpful, please cite:
 
 ```sh
-1. <pending>
+Gilchrist, C. L., & Chooi, Y. H. (2021).
+Synthaser: a CD-Search enabled Python toolkit for analysing domain architecture of fungal secondary metabolite megasynth (et) ases.
+*Fungal Biology and Biotechnology*, 8(1), 1-19.
 ```
